@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#07050d">
   <title>CIO Annemasse Coffee</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=10">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -27,7 +27,11 @@
       <img src="logo.jpeg" alt="CIO Annemasse Coffee">
       <div><strong>CIO Annemasse Coffee</strong><span>Annemasse • Genève</span></div>
     </div>
-    <button id="cartToggle" class="cart-btn">Panier <span id="cartCount">0</span></button>
+    <div class="header-actions">
+      <button id="ordersToggle" class="small-btn">Mes commandes</button>
+      <button id="adminToggle" class="small-btn hidden">⚙️ Admin</button>
+      <button id="cartToggle" class="cart-btn">Panier <span id="cartCount">0</span></button>
+    </div>
   </header>
 
   <main>
@@ -35,44 +39,36 @@
       <div class="hero-copy">
         <p class="eyebrow">BOUTIQUE TELEGRAM</p>
         <h1>Une expérience premium, directement dans Telegram.</h1>
-        <p class="muted">Parcourez les collections, ajoutez vos articles au panier et transmettez votre demande en quelques secondes.</p>
+        <p class="muted">Catalogue, variantes, panier, livraison ou remise sur place et suivi de commande.</p>
         <div class="hero-actions">
           <a href="#catalogue" class="btn primary">Voir le catalogue</a>
-          <button id="contactBtn" class="btn ghost">Nous contacter</button>
+          <button id="contactBtn" class="btn ghost">Écrire à @cioswiss</button>
         </div>
       </div>
-      <div class="hero-logo">
-        <img src="logo.jpeg" alt="Logo CIO Annemasse Coffee">
-      </div>
+      <div class="hero-logo"><img src="logo.jpeg" alt="Logo CIO Annemasse Coffee"></div>
     </section>
 
     <section class="metrics">
       <div><strong>18+</strong><span>Accès réservé</span></div>
       <div><strong>Local</strong><span>Annemasse & Genève</span></div>
-      <div><strong>Telegram</strong><span>Commande rapide</span></div>
+      <div><strong>Suivi</strong><span>Statut de commande</span></div>
     </section>
 
     <section id="catalogue" class="section">
       <div class="section-head">
-        <div>
-          <p class="eyebrow">CATALOGUE</p>
-          <h2>Nos collections</h2>
+        <div><p class="eyebrow">CATALOGUE</p><h2>Nos collections</h2></div>
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="Rechercher un produit">
+          <select id="categoryFilter">
+            <option value="all">Toutes les catégories</option>
+            <option value="fleurs">Fleurs</option>
+            <option value="resines">Résines</option>
+            <option value="puffs">Puffs</option>
+            <option value="collections">Collections</option>
+          </select>
         </div>
-        <select id="categoryFilter">
-          <option value="all">Toutes les catégories</option>
-          <option value="fleurs">Fleurs</option>
-          <option value="resines">Résines</option>
-          <option value="puffs">Puffs</option>
-          <option value="collections">Collections</option>
-        </select>
       </div>
       <div id="productGrid" class="product-grid"></div>
-    </section>
-
-    <section class="section info-box">
-      <p class="eyebrow">INFORMATIONS</p>
-      <h2>Présentation claire et professionnelle</h2>
-      <p class="muted">Chaque fiche peut être complétée avec la disponibilité, le format, les analyses et les mentions obligatoires correspondant au produit réel.</p>
     </section>
   </main>
 
@@ -85,27 +81,67 @@
     <div class="cart-total"><span>Total</span><strong id="cartTotal">0,00 €</strong></div>
 
     <div class="order-form">
+      <div id="telegramIdentity" class="identity-box"></div>
       <label>Nom complet<input id="customerName" type="text" placeholder="Votre nom"></label>
       <label>Téléphone<input id="customerPhone" type="tel" placeholder="+33 / +41 ..."></label>
       <label>Mode de remise
         <select id="deliveryMode">
-          <option>Retrait en magasin</option>
-          <option>Remise en main propre</option>
+          <option value="delivery">🚚 Livraison</option>
+          <option value="pickup">📍 Sur place</option>
         </select>
       </label>
-      <label>Adresse ou lieu<textarea id="customerAddress" rows="3" placeholder="Adresse / lieu de rendez-vous"></textarea></label>
+      <label id="addressLabel">Adresse de livraison
+        <textarea id="customerAddress" rows="3" placeholder="Adresse complète"></textarea>
+      </label>
+      <div id="pickupNotice" class="notice hidden">📍 L’adresse exacte vous sera envoyée en privé après validation.</div>
       <label>Commentaire<textarea id="customerNote" rows="2" placeholder="Optionnel"></textarea></label>
-      <button id="orderBtn" class="btn primary full">Envoyer sur Telegram</button>
+      <button id="orderBtn" class="btn primary full">Valider la commande</button>
       <p id="orderStatus" class="status"></p>
+      <a id="contactAfterOrder" class="btn ghost full hidden" href="https://t.me/cioswiss">Écrire à @cioswiss</a>
     </div>
   </aside>
+
+  <section id="ordersPanel" class="modal hidden">
+    <div class="modal-card">
+      <div class="drawer-head">
+        <div><p class="eyebrow">SUIVI</p><h2>Mes commandes</h2></div>
+        <button id="ordersClose" class="icon-btn">×</button>
+      </div>
+      <div id="ordersList" class="orders-list"></div>
+    </div>
+  </section>
+
+  <section id="productModal" class="modal hidden">
+    <div class="modal-card">
+      <button id="productClose" class="icon-btn modal-x">×</button>
+      <div id="productDetails"></div>
+    </div>
+  </section>
+
+  <section id="adminPanel" class="modal hidden">
+    <div class="modal-card admin-wide">
+      <div class="drawer-head">
+        <div><p class="eyebrow">ADMINISTRATION</p><h2>Tableau de bord</h2></div>
+        <button id="adminClose" class="icon-btn">×</button>
+      </div>
+      <div class="admin-tabs">
+        <button data-tab="dashboard" class="active">Dashboard</button>
+        <button data-tab="products">Produits</button>
+        <button data-tab="orders">Commandes</button>
+        <button data-tab="clients">Clients</button>
+        <button data-tab="accounting">Comptabilité</button>
+      </div>
+      <div id="adminContent"></div>
+    </div>
+  </section>
+
   <div id="overlay" class="overlay"></div>
 
   <footer>
-    <img src="assets/logo.jpeg" alt="">
+    <img src="logo.jpeg" alt="">
     <p>CIO Annemasse Coffee • Annemasse & Genève • 18+</p>
   </footer>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

@@ -1,639 +1,211 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbwdPwpXZKo-rDdhrleOZNs-4VyQ5cdTYmzYiq-o9MbTDQeR2WTB-h8MXuEhup4R2V7s/exec";
 const ADMIN_TELEGRAM_ID = "8878140883";
+const CONTACT_USERNAME = "cioswiss";
 
 const tg = window.Telegram?.WebApp;
-if (tg) {
-  tg.ready();
-  tg.expand();
-}
+if (tg) { tg.ready(); tg.expand(); }
 
 let products = [];
+let adminKey = "";
 const cart = new Map();
 
-const grid = document.querySelector("#productGrid");
-const drawer = document.querySelector("#cartDrawer");
-const overlay = document.querySelector("#overlay");
+const $ = selector => document.querySelector(selector);
+const money = value => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR"}).format(Number(value||0));
+const tgUser = () => tg?.initDataUnsafe?.user || {};
+const imagePath = value => !value ? "logo.jpeg" : /^https?:\/\//i.test(value) ? value : value.replace(/^assets\//,"");
+const splitList = value => Array.isArray(value) ? value : String(value||"").split(/[|,\n]/).map(x=>x.trim()).filter(Boolean);
+const parseVariants = value => {
+  if (Array.isArray(value)) return value;
+  try { return JSON.parse(value || "[]"); } catch { return []; }
+};
 
-const money = value =>
-  new Intl.NumberFormat("fr-FR", {
-    style: "currency",
-    currency: "EUR"
-  }).format(Number(value || 0));
-
-function imagePath(name) {
-
-  if (!name) return "logo.jpeg";
-
-  if (/^https?:\/\//i.test(name)) return name;
-
-  return name.replace(/^assets\//, "");
+function showTelegramIdentity(){
+  const user=tgUser();
+  $("#telegramIdentity").textContent = user.id
+    ? `Telegram : ${user.username ? "@"+user.username : user.first_name||"Utilisateur"} • ID ${user.id}`
+    : "Informations Telegram disponibles uniquement dans le bot.";
+  if(user.first_name && !$("#customerName").value) $("#customerName").value=[user.first_name,user.last_name].filter(Boolean).join(" ");
 }
 
-async function loadProducts() {
-  grid.innerHTML = '<p class="muted">Chargement du catalogue…</p>';
-
-  try {
-    const response = await fetch(`${API_URL}?action=products`, {
-      redirect: "follow"
-    });
-    const data = await response.json();
-
-    if (!data.ok) {
-      throw new Error(data.error || "Erreur de chargement");
-    }
-
-    products = (data.products || [])
-      .filter(product => product.disponible !== false)
-      .map(product => ({
-        id: String(product.id),
-        name: product.nom,
-        category: product.categorie,
-        price: Number(product.prix || 0),
-        unit: "Disponible",
-        image: imagePath(product.image),
-        desc: product.description || ""
-      }));
-
-    renderProducts(document.querySelector("#categoryFilter").value);
-    renderCart();
-  } catch (error) {
-    grid.innerHTML =
-      `<p class="status">Impossible de charger les produits : ${error.message}</p>`;
-  }
+async function apiGet(action, extra={}){
+  const url=new URL(API_URL);
+  url.searchParams.set("action",action);
+  Object.entries(extra).forEach(([k,v])=>url.searchParams.set(k,v));
+  const r=await fetch(url,{redirect:"follow"});
+  const data=await r.json();
+  if(!data.ok) throw new Error(data.error||"Erreur serveur");
+  return data;
+}
+async function apiPost(payload){
+  const r=await fetch(API_URL,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
+  const data=await r.json();
+  if(!data.ok) throw new Error(data.error||"Erreur serveur");
+  return data;
 }
 
-function renderProducts(filter = "all") {
-  grid.innerHTML = "";
-
-  const visible = products.filter(
-    product => filter === "all" || product.category === filter
-  );
-
-  if (!visible.length) {
-    grid.innerHTML = '<p class="muted">Aucun produit dans cette catégorie.</p>';
-    return;
-  }
-
-  visible.forEach(product => {
-    const card = document.createElement("article");
-    card.className = "product";
-    card.innerHTML = `
-      <div class="product-visual">
-        <img src="${product.image}" alt="${product.name}">
-      </div>
-      <div class="product-body">
-        <span class="badge">${product.unit}</span>
-        <h3>${product.name}</h3>
-        <p>${product.desc}</p>
-        <div class="product-meta">
-          <span class="price">${money(product.price)}</span>
-          <small>18+</small>
-        </div>
-        <button class="btn primary full add" data-id="${product.id}">
-          Ajouter au panier
-        </button>
-      </div>
-    `;
-    grid.appendChild(card);
+async function loadProducts(){
+  $("#productGrid").innerHTML='<p class="muted">Chargement du catalogue…</p>';
+  try{
+    const data=await apiGet("products");
+    products=(data.products||[]).map(p=>({
+      id:String(p.id), name:p.nom||"", category:p.categorie||"collections",
+      price:Number(p.prix||0), image:imagePath(p.image), desc:p.description||"",
+      available:p.disponible!==false, images:splitList(p.images||p.image),
+      videos:splitList(p.videos), variants:parseVariants(p.variants)
+    })).filter(p=>p.available);
+    renderProducts();
+  }catch(e){$("#productGrid").innerHTML=`<p class="status">${e.message}</p>`;}
+}
+function renderProducts(){
+  const filter=$("#categoryFilter").value, q=$("#searchInput").value.trim().toLowerCase();
+  const list=products.filter(p=>(filter==="all"||p.category===filter)&&(!q||`${p.name} ${p.desc}`.toLowerCase().includes(q)));
+  $("#productGrid").innerHTML="";
+  if(!list.length){$("#productGrid").innerHTML='<p class="muted">Aucun produit trouvé.</p>';return;}
+  list.forEach(p=>{
+    const card=document.createElement("article"); card.className="product";
+    const minPrice=p.variants.length?Math.min(...p.variants.map(v=>Number(v.price||v.prix||0))):p.price;
+    card.innerHTML=`<div class="product-visual" data-detail="${p.id}"><img src="${p.images[0]||p.image}" alt="${p.name}"></div>
+      <div class="product-body"><span class="badge">${p.variants.length?`${p.variants.length} formats`:"Disponible"}</span>
+      <h3>${p.name}</h3><p>${p.desc}</p><div class="product-meta"><span class="price">${money(minPrice)}</span><small>18+</small></div>
+      <button class="btn primary full" data-detail="${p.id}">Voir le produit</button></div>`;
+    $("#productGrid").appendChild(card);
   });
-
-  grid.querySelectorAll(".add").forEach(button => {
-    button.addEventListener("click", () => {
-      const id = String(button.dataset.id);
-      cart.set(id, (cart.get(id) || 0) + 1);
-      renderCart();
-      openCart();
-      tg?.HapticFeedback?.impactOccurred("light");
-    });
+  document.querySelectorAll("[data-detail]").forEach(b=>b.addEventListener("click",()=>openProduct(b.dataset.detail)));
+}
+function openProduct(id){
+  const p=products.find(x=>x.id===id); if(!p)return;
+  const variants=p.variants.length?p.variants:[{label:"Standard",price:p.price,stock:null}];
+  $("#productDetails").innerHTML=`<img id="mainProductImage" class="gallery-main" src="${p.images[0]||p.image}" alt="${p.name}">
+    <div class="thumbs">${p.images.map(i=>`<button data-image="${imagePath(i)}"><img src="${imagePath(i)}" alt=""></button>`).join("")}</div>
+    <h2>${p.name}</h2><p class="muted">${p.desc}</p>
+    ${p.videos.map(v=>`<video class="media-video" controls playsinline src="${v}"></video>`).join("")}
+    <div class="variant-list">${variants.map((v,i)=>`<label class="variant-row"><span>${v.label||v.grammage||"Format"}</span><span><strong>${money(v.price||v.prix)}</strong> <input type="radio" name="variant" value="${i}" ${i===0?"checked":""}></span></label>`).join("")}</div>
+    <button id="addVariant" class="btn primary full">Ajouter au panier</button>`;
+  $("#productModal").classList.remove("hidden");
+  document.querySelectorAll("[data-image]").forEach(b=>b.addEventListener("click",()=>$("#mainProductImage").src=b.dataset.image));
+  $("#addVariant").addEventListener("click",()=>{
+    const i=Number(document.querySelector('input[name="variant"]:checked').value), v=variants[i];
+    const key=`${p.id}:${i}`;
+    cart.set(key,{productId:p.id,variantIndex:i,qty:(cart.get(key)?.qty||0)+1,label:v.label||v.grammage||"Standard",price:Number(v.price||v.prix||p.price)});
+    renderCart(); $("#productModal").classList.add("hidden"); openCart();
   });
 }
-
-function renderCart() {
-  const items = document.querySelector("#cartItems");
-  items.innerHTML = "";
-
-  let total = 0;
-  let count = 0;
-
-  if (!cart.size) {
-    items.innerHTML = '<p class="muted">Votre panier est vide.</p>';
+function renderCart(){
+  $("#cartItems").innerHTML=""; let total=0,count=0;
+  if(!cart.size) $("#cartItems").innerHTML='<p class="muted">Votre panier est vide.</p>';
+  for(const [key,item] of cart){
+    const p=products.find(x=>x.id===item.productId); if(!p)continue;
+    total+=item.price*item.qty; count+=item.qty;
+    const row=document.createElement("div"); row.className="cart-row";
+    row.innerHTML=`<div><strong>${p.name}</strong><small>${item.label} • ${money(item.price)} × ${item.qty}</small></div>
+      <div class="qty"><button data-key="${key}" data-change="-1">−</button><span>${item.qty}</span><button data-key="${key}" data-change="1">+</button></div>`;
+    $("#cartItems").appendChild(row);
   }
-
-  for (const [id, quantity] of cart.entries()) {
-    const product = products.find(item => String(item.id) === String(id));
-
-    if (!product) {
-      cart.delete(id);
-      continue;
-    }
-
-    total += product.price * quantity;
-    count += quantity;
-
-    const row = document.createElement("div");
-    row.className = "cart-row";
-    row.innerHTML = `
-      <div>
-        <strong>${product.name}</strong>
-        <small>${money(product.price)} × ${quantity}</small>
-      </div>
-      <div class="qty">
-        <button data-action="minus" data-id="${id}">−</button>
-        <span>${quantity}</span>
-        <button data-action="plus" data-id="${id}">+</button>
-      </div>
-    `;
-    items.appendChild(row);
-  }
-
-  document.querySelector("#cartTotal").textContent = money(total);
-  document.querySelector("#cartCount").textContent = count;
-
-  items.querySelectorAll("button").forEach(button => {
-    button.addEventListener("click", () => {
-      const id = String(button.dataset.id);
-      const next =
-        (cart.get(id) || 0) +
-        (button.dataset.action === "plus" ? 1 : -1);
-
-      if (next <= 0) {
-        cart.delete(id);
-      } else {
-        cart.set(id, next);
-      }
-
-      renderCart();
-    });
-  });
+  $("#cartTotal").textContent=money(total); $("#cartCount").textContent=count;
+  document.querySelectorAll("[data-change]").forEach(b=>b.addEventListener("click",()=>{const x=cart.get(b.dataset.key);x.qty+=Number(b.dataset.change);if(x.qty<=0)cart.delete(b.dataset.key);renderCart();}));
 }
-
-function openCart() {
-  drawer.classList.add("open");
-  overlay.classList.add("show");
-  drawer.setAttribute("aria-hidden", "false");
+function openCart(){showTelegramIdentity();$("#cartDrawer").classList.add("open");$("#overlay").classList.add("show");}
+function closeCart(){$("#cartDrawer").classList.remove("open");$("#overlay").classList.remove("show");}
+function updateDeliveryFields(){
+  const pickup=$("#deliveryMode").value==="pickup";
+  $("#addressLabel").classList.toggle("hidden",pickup);
+  $("#pickupNotice").classList.toggle("hidden",!pickup);
+  $("#customerAddress").required=!pickup;
 }
-
-function closeCart() {
-  drawer.classList.remove("open");
-  overlay.classList.remove("show");
-  drawer.setAttribute("aria-hidden", "true");
+function buildOrder(){
+  if(!cart.size)throw new Error("Ajoutez au moins un produit.");
+  const name=$("#customerName").value.trim(),phone=$("#customerPhone").value.trim(),mode=$("#deliveryMode").value;
+  const address=mode==="pickup"?"Adresse envoyée en privé":$("#customerAddress").value.trim();
+  if(!name||!phone||(mode==="delivery"&&!address))throw new Error("Complétez les informations obligatoires.");
+  let total=0; const items=[];
+  for(const item of cart.values()){
+    const p=products.find(x=>x.id===item.productId);if(!p)continue;
+    total+=item.price*item.qty;
+    items.push({productId:p.id,name:p.name,variant:item.label,unitPrice:item.price,qty:item.qty,lineTotal:item.price*item.qty});
+  }
+  const u=tgUser();
+  return {name,phone,mode,address,note:$("#customerNote").value.trim(),total,items,
+    telegramId:String(u.id||""),telegramUsername:u.username||"",telegramFirstName:u.first_name||"",telegramLastName:u.last_name||""};
 }
-
-function buildOrder() {
-  if (!cart.size) {
-    throw new Error("Ajoutez au moins un produit.");
-  }
-
-  const name = document.querySelector("#customerName").value.trim();
-  const phone = document.querySelector("#customerPhone").value.trim();
-  const address = document.querySelector("#customerAddress").value.trim();
-
-  if (!name || !phone || !address) {
-    throw new Error("Complétez le nom, le téléphone et le lieu.");
-  }
-
-  let total = 0;
-  const lines = [];
-
-  for (const [id, quantity] of cart.entries()) {
-    const product = products.find(item => String(item.id) === String(id));
-    if (!product) continue;
-
-    total += product.price * quantity;
-    lines.push(
-      `• ${product.name} × ${quantity} — ${money(product.price * quantity)}`
-    );
-  }
-
-  return {
-    name,
-    phone,
-    address,
-    mode: document.querySelector("#deliveryMode").value,
-    note: document.querySelector("#customerNote").value.trim(),
-    total,
-    items: lines
-  };
-}document.querySelector("#orderBtn").addEventListener("click", async () => {
-
-  const status = document.querySelector("#orderStatus");
-
-  try {
-
-    const order = buildOrder();
-
-    status.textContent = "Envoi de la commande…";
-
-    const response = await fetch(API_URL, {
-
-      method: "POST",
-
-      redirect: "follow",
-
-      headers: {
-
-        "Content-Type": "text/plain;charset=utf-8"
-
-      },
-
-      body: JSON.stringify({
-
-        action: "order",
-
-        order: order
-
-      })
-
-    });
-
-    const result = await response.json();
-
-    if (!result.ok) {
-
-      throw new Error(result.error || "Impossible d’envoyer la commande.");
-
-    }
-
-    status.textContent = "✅ Commande envoyée sur Telegram.";
-
-    cart.clear();
-
-    renderCart();
-
+async function submitOrder(){
+  const status=$("#orderStatus"); status.textContent="Envoi de la commande…";
+  try{
+    const data=await apiPost({action:"createOrder",order:buildOrder()});
+    status.textContent=`✅ Commande ${data.orderNumber} enregistrée. Statut : ${data.status}.`;
+    $("#contactAfterOrder").classList.remove("hidden"); cart.clear();renderCart();
     tg?.HapticFeedback?.notificationOccurred("success");
-
-  } catch (error) {
-status.textContent = "❌ " + error.message;
-  }
-});
-
-/* ADMINISTRATION */
-
-let adminKey = "";
-
-function telegramUserId() {
-  return String(tg?.initDataUnsafe?.user?.id || "");
+  }catch(e){status.textContent=`❌ ${e.message}`;}
+}
+async function openOrders(){
+  $("#ordersPanel").classList.remove("hidden"); $("#ordersList").innerHTML='<p class="muted">Chargement…</p>';
+  try{
+    const id=String(tgUser().id||""); if(!id)throw new Error("Ouvrez la boutique depuis Telegram.");
+    const data=await apiGet("myOrders",{telegramId:id});
+    $("#ordersList").innerHTML=(data.orders||[]).map(o=>`<article class="order-card"><header><strong>${o.orderNumber}</strong><span class="status-pill">${o.status}</span></header><p>${o.createdAt}</p><p>${o.itemsSummary}</p><strong>${money(o.total)}</strong></article>`).join("")||'<p class="muted">Aucune commande.</p>';
+  }catch(e){$("#ordersList").innerHTML=`<p class="status">${e.message}</p>`;}
 }
 
-function installAdminInterface() {
-  const style = document.createElement("style");
-  style.textContent = `
-    .cio-hidden{display:none!important}
-    .cio-admin-button{
-      border:1px solid rgba(141,61,255,.5);
-      background:rgba(141,61,255,.16);
-      color:#fff;
-      border-radius:14px;
-      padding:10px 14px;
-      font-weight:800;
-      margin-right:8px
+async function openAdmin(){
+  if(!adminKey)adminKey=prompt("Code administrateur :")||"";
+  if(!adminKey)return;
+  $("#adminPanel").classList.remove("hidden"); await renderAdminTab("dashboard");
+}
+async function adminCall(action,payload={}){return apiPost({action,adminKey,...payload});}
+async function renderAdminTab(tab){
+  document.querySelectorAll(".admin-tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+  $("#adminContent").innerHTML='<p class="muted">Chargement…</p>';
+  try{
+    if(tab==="dashboard"){
+      const d=await adminCall("dashboard");
+      $("#adminContent").innerHTML=`<div class="stats-grid">
+        <div class="stat"><strong>${money(d.todayRevenue)}</strong><span>CA aujourd’hui</span></div>
+        <div class="stat"><strong>${money(d.monthRevenue)}</strong><span>CA du mois</span></div>
+        <div class="stat"><strong>${d.orderCount}</strong><span>Commandes</span></div>
+        <div class="stat"><strong>${d.clientCount}</strong><span>Clients</span></div></div>`;
+    }else if(tab==="orders"){
+      const d=await adminCall("listOrders");
+      $("#adminContent").innerHTML=`<table class="admin-table"><thead><tr><th>N°</th><th>Client</th><th>Total</th><th>Statut</th><th>Actions</th></tr></thead><tbody>${d.orders.map(o=>`<tr><td>${o.orderNumber}</td><td>${o.name}<br><small>${o.telegramUsername?"@"+o.telegramUsername:o.telegramId}</small></td><td>${money(o.total)}</td><td>${o.status}</td><td class="admin-actions">${["Acceptée","Préparation","En livraison","Prête sur place","Terminée","Annulée"].map(s=>`<button data-order="${o.orderNumber}" data-status="${s}">${s}</button>`).join("")}</td></tr>`).join("")}</tbody></table>`;
+      document.querySelectorAll("[data-order]").forEach(b=>b.addEventListener("click",async()=>{await adminCall("updateOrderStatus",{orderNumber:b.dataset.order,status:b.dataset.status});renderAdminTab("orders");}));
+    }else if(tab==="clients"){
+      const d=await adminCall("listClients");
+      $("#adminContent").innerHTML=`<table class="admin-table"><thead><tr><th>Client</th><th>Téléphone</th><th>Commandes</th><th>Total</th></tr></thead><tbody>${d.clients.map(c=>`<tr><td>${c.name}<br><small>${c.telegramUsername?"@"+c.telegramUsername:c.telegramId}</small></td><td>${c.phone}</td><td>${c.orderCount}</td><td>${money(c.totalSpent)}</td></tr>`).join("")}</tbody></table>`;
+    }else if(tab==="accounting"){
+      const d=await adminCall("accounting");
+      $("#adminContent").innerHTML=`<div class="stats-grid"><div class="stat"><strong>${money(d.revenue)}</strong><span>Ventes terminées</span></div><div class="stat"><strong>${money(d.expenses)}</strong><span>Dépenses</span></div><div class="stat"><strong>${money(d.profit)}</strong><span>Bénéfice estimé</span></div><div class="stat"><strong>${d.completedOrders}</strong><span>Commandes terminées</span></div></div>
+      <div class="admin-form"><h3>Ajouter une dépense</h3><div class="admin-row"><input id="expenseLabel" placeholder="Libellé"><input id="expenseAmount" type="number" placeholder="Montant"></div><button id="addExpense" class="btn primary">Enregistrer</button></div>`;
+      $("#addExpense").addEventListener("click",async()=>{await adminCall("addExpense",{label:$("#expenseLabel").value,amount:Number($("#expenseAmount").value)});renderAdminTab("accounting");});
+    }else if(tab==="products"){
+      const d=await apiGet("products");
+      $("#adminContent").innerHTML=`<button id="newProduct" class="btn primary">Ajouter un produit</button><div id="productAdminList">${d.products.map(p=>`<article class="order-card"><strong>${p.nom}</strong><p>${p.categorie} • ${money(p.prix)}</p><button data-edit="${p.id}">Modifier</button></article>`).join("")}</div><div id="productAdminForm"></div>`;
+      $("#newProduct").addEventListener("click",()=>showProductAdminForm());
+      document.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>showProductAdminForm(d.products.find(p=>String(p.id)===b.dataset.edit))));
     }
-    .cio-admin-panel{
-      position:fixed;
-      inset:0;
-      z-index:200;
-      background:rgba(3,2,7,.92);
-      backdrop-filter:blur(14px);
-      padding:16px;
-      overflow:auto
-    }
-    .cio-admin-card{
-      width:min(760px,100%);
-      margin:20px auto;
-      background:#080610;
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:24px;
-      padding:20px;
-      color:#fff
-    }
-    .cio-admin-head,.cio-admin-toolbar,.cio-admin-actions{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      gap:10px;
-      flex-wrap:wrap
-    }
-    .cio-admin-list{display:grid;gap:12px;margin-top:16px}
-    .cio-admin-item{
-      display:grid;
-      grid-template-columns:72px 1fr auto;
-      gap:12px;
-      align-items:center;
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:16px;
-      padding:12px
-    }
-    .cio-admin-item img{
-      width:72px;height:72px;object-fit:cover;border-radius:12px
-    }
-    .cio-admin-item h3{margin:0 0 4px}
-    .cio-admin-item p{margin:0;color:#b5abc8;font-size:13px}
-    .cio-admin-item button,.cio-admin-card button{
-      border:0;border-radius:12px;padding:10px 12px;font-weight:800
-    }
-    .cio-edit{background:#ffd54a;color:#17120a}
-    .cio-delete{background:#e95555;color:#fff;margin-top:6px}
-    .cio-primary{
-      background:linear-gradient(135deg,#00eaff,#8d3dff);
-      color:#07050d
-    }
-    .cio-secondary{
-      background:#17102a;color:#fff;border:1px solid rgba(255,255,255,.12)!important
-    }
-    .cio-admin-form{
-      display:grid;gap:12px;margin-top:18px;padding-top:18px;
-      border-top:1px solid rgba(255,255,255,.12)
-    }
-    .cio-admin-form label{display:grid;gap:6px;color:#b5abc8}
-    .cio-admin-form input,.cio-admin-form select,.cio-admin-form textarea{
-      width:100%;background:#0a0712;border:1px solid rgba(255,255,255,.12);
-      color:#fff;border-radius:13px;padding:12px
-    }
-    .cio-check{display:flex!important;align-items:center;gap:8px}
-    .cio-check input{width:auto}
-    .cio-status{color:#00eaff;margin-top:10px}
-    @media(max-width:620px){
-      .cio-admin-item{grid-template-columns:56px 1fr}
-      .cio-admin-item img{width:56px;height:56px}
-      .cio-admin-item-controls{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
-      .cio-delete{margin-top:0}
-    }
-  `;
-  document.head.appendChild(style);
-
-  const cartButton = document.querySelector("#cartToggle");
-  const adminButton = document.createElement("button");
-  adminButton.id = "cioAdminButton";
-  adminButton.className = "cio-admin-button";
-  adminButton.textContent = "⚙️ Admin";
-  cartButton.parentNode.insertBefore(adminButton, cartButton);
-
-  const panel = document.createElement("section");
-  panel.id = "cioAdminPanel";
-  panel.className = "cio-admin-panel cio-hidden";
-  panel.innerHTML = `
-    <div class="cio-admin-card">
-      <div class="cio-admin-head">
-        <div>
-          <p class="eyebrow">ADMINISTRATION</p>
-          <h2>Gestion des produits</h2>
-        </div>
-        <button id="cioAdminClose" class="cio-secondary">Fermer</button>
-      </div>
-
-      <div class="cio-admin-toolbar">
-        <button id="cioAdminRefresh" class="cio-secondary">Actualiser</button>
-        <button id="cioAdminAdd" class="cio-primary">Ajouter un produit</button>
-      </div>
-
-      <div id="cioAdminMessage" class="cio-status"></div>
-      <div id="cioAdminList" class="cio-admin-list"></div>
-
-      <div id="cioAdminForm" class="cio-admin-form cio-hidden">
-        <h3 id="cioAdminFormTitle">Produit</h3>
-        <input id="cioProductId" type="hidden">
-
-        <label>Nom
-          <input id="cioProductName" type="text">
-        </label>
-
-        <label>Catégorie
-          <select id="cioProductCategory">
-            <option value="fleurs">Fleurs</option>
-            <option value="resines">Résines</option>
-            <option value="puffs">Puffs</option>
-            <option value="collections">Collections</option>
-          </select>
-        </label>
-
-        <label>Prix
-          <input id="cioProductPrice" type="number" min="0" step="0.01">
-        </label>
-
-        <label>Image
-          <input id="cioProductImage" type="text" placeholder="nom_image.jpeg">
-        </label>
-
-        <label>Description
-          <textarea id="cioProductDescription" rows="3"></textarea>
-        </label>
-
-        <label class="cio-check">
-          <input id="cioProductAvailable" type="checkbox" checked>
-          Disponible
-        </label>
-
-        <div class="cio-admin-actions">
-          <button id="cioAdminCancel" class="cio-secondary">Annuler</button>
-          <button id="cioAdminSave" class="cio-primary">Enregistrer</button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(panel);
-
-  adminButton.addEventListener("click", openAdmin);
-  document.querySelector("#cioAdminClose").addEventListener("click", closeAdmin);
-  document.querySelector("#cioAdminRefresh").addEventListener("click", refreshAdmin);
-  document.querySelector("#cioAdminAdd").addEventListener("click", () => showAdminForm());
-  document.querySelector("#cioAdminCancel").addEventListener("click", () => {
-    document.querySelector("#cioAdminForm").classList.add("cio-hidden");
-  });
-  document.querySelector("#cioAdminSave").addEventListener("click", saveAdminProduct);
+  }catch(e){$("#adminContent").innerHTML=`<p class="status">${e.message}</p>`;}
+}
+function showProductAdminForm(p={}){
+  $("#productAdminForm").innerHTML=`<div class="admin-form"><h3>${p.id?"Modifier":"Ajouter"} le produit</h3>
+    <div class="admin-row"><input id="pName" placeholder="Nom" value="${p.nom||""}"><input id="pCategory" placeholder="Catégorie" value="${p.categorie||"collections"}"></div>
+    <div class="admin-row"><input id="pPrice" type="number" placeholder="Prix de base" value="${p.prix||""}"><input id="pImage" placeholder="Image principale" value="${p.image||""}"></div>
+    <textarea id="pDescription" placeholder="Description">${p.description||""}</textarea>
+    <textarea id="pImages" placeholder="Photos séparées par |">${p.images||p.image||""}</textarea>
+    <textarea id="pVideos" placeholder="Vidéos séparées par |">${p.videos||""}</textarea>
+    <textarea id="pVariants" placeholder='Variantes JSON : [{"label":"1 g","price":10,"stock":20}]'>${typeof p.variants==="string"?p.variants:JSON.stringify(p.variants||[])}</textarea>
+    <label><input id="pAvailable" type="checkbox" ${p.disponible!==false?"checked":""}> Disponible</label>
+    <div class="admin-actions"><button id="saveProduct" class="btn primary">Enregistrer</button>${p.id?'<button id="deleteProduct" class="btn danger">Supprimer</button>':""}</div></div>`;
+  $("#saveProduct").addEventListener("click",async()=>{await adminCall(p.id?"updateProduct":"addProduct",{product:{id:p.id,nom:$("#pName").value,categorie:$("#pCategory").value,prix:Number($("#pPrice").value),image:$("#pImage").value,description:$("#pDescription").value,images:$("#pImages").value,videos:$("#pVideos").value,variants:$("#pVariants").value,disponible:$("#pAvailable").checked}});renderAdminTab("products");});
+  if(p.id)$("#deleteProduct").addEventListener("click",async()=>{if(confirm("Supprimer ?")){await adminCall("deleteProduct",{id:p.id});renderAdminTab("products");}});
 }
 
-function openAdmin() {
-  document.querySelector("#cioAdminPanel").classList.remove("cio-hidden");
+$("#ageYes").addEventListener("click",()=>$("#ageGate").classList.add("hidden"));
+$("#ageNo").addEventListener("click",()=>$(".gate-card").innerHTML="<h1>Accès refusé</h1>");
+$("#cartToggle").addEventListener("click",openCart);$("#cartClose").addEventListener("click",closeCart);$("#overlay").addEventListener("click",closeCart);
+$("#deliveryMode").addEventListener("change",updateDeliveryFields);$("#orderBtn").addEventListener("click",submitOrder);
+$("#categoryFilter").addEventListener("change",renderProducts);$("#searchInput").addEventListener("input",renderProducts);
+$("#productClose").addEventListener("click",()=>$("#productModal").classList.add("hidden"));
+$("#ordersToggle").addEventListener("click",openOrders);$("#ordersClose").addEventListener("click",()=>$("#ordersPanel").classList.add("hidden"));
+$("#contactBtn").addEventListener("click",()=>tg?.openTelegramLink?.(`https://t.me/${CONTACT_USERNAME}`)||window.open(`https://t.me/${CONTACT_USERNAME}`,"_blank"));
+$("#adminToggle").addEventListener("click",openAdmin);$("#adminClose").addEventListener("click",()=>$("#adminPanel").classList.add("hidden"));
+document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>renderAdminTab(b.dataset.tab)));
 
-  if (!adminKey) {
-    adminKey = prompt("Entre ton code secret administrateur :") || "";
-  }
-
-  if (adminKey) {
-    refreshAdmin();
-  }
-}
-
-function closeAdmin() {
-  document.querySelector("#cioAdminPanel").classList.add("cio-hidden");
-  document.querySelector("#cioAdminForm").classList.add("cio-hidden");
-}
-
-async function adminPost(payload) {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    redirect: "follow",
-    headers: {
-      "Content-Type": "text/plain;charset=utf-8"
-    },
-    body: JSON.stringify({
-      ...payload,
-      adminKey
-    })
-  });
-
-  return response.json();
-}
-
-async function refreshAdmin() {
-  const message = document.querySelector("#cioAdminMessage");
-  message.textContent = "Chargement…";
-
-  try {
-    const response = await fetch(`${API_URL}?action=products`, {
-      redirect: "follow"
-    });
-    const data = await response.json();
-
-    if (!data.ok) {
-      throw new Error(data.error || "Erreur");
-    }
-
-    renderAdminList(data.products || []);
-    message.textContent = "";
-  } catch (error) {
-    message.textContent = error.message;
-  }
-}
-
-function renderAdminList(list) {
-  const container = document.querySelector("#cioAdminList");
-  container.innerHTML = "";
-
-  list.forEach(product => {
-    const item = document.createElement("div");
-    item.className = "cio-admin-item";
-    item.innerHTML = `
-      <img src="${imagePath(product.image)}" alt="">
-      <div>
-        <h3>${product.nom}</h3>
-        <p>
-          ${product.categorie} • ${money(product.prix)} •
-          ${product.disponible ? "Disponible" : "Indisponible"}
-        </p>
-      </div>
-      <div class="cio-admin-item-controls">
-        <button class="cio-edit" data-id="${product.id}">Modifier</button>
-        <button class="cio-delete" data-id="${product.id}">Supprimer</button>
-      </div>
-    `;
-    container.appendChild(item);
-  });
-
-  container.querySelectorAll(".cio-edit").forEach(button => {
-    button.addEventListener("click", () => {
-      const product = list.find(
-        item => String(item.id) === String(button.dataset.id)
-      );
-      showAdminForm(product);
-    });
-  });
-
-  container.querySelectorAll(".cio-delete").forEach(button => {
-    button.addEventListener("click", async () => {
-      if (!confirm("Supprimer ce produit ?")) return;
-
-      const message = document.querySelector("#cioAdminMessage");
-      message.textContent = "Suppression…";
-
-      try {
-        const result = await adminPost({
-          action: "delete",
-          id: String(button.dataset.id)
-        });
-
-        if (!result.ok) {
-          throw new Error(result.error || "Erreur");
-        }
-
-        await refreshAdmin();
-        await loadProducts();
-      } catch (error) {
-        message.textContent = error.message;
-      }
-    });
-  });
-}
-
-function showAdminForm(product = null) {
-  const form = document.querySelector("#cioAdminForm");
-  form.classList.remove("cio-hidden");
-
-  document.querySelector("#cioAdminFormTitle").textContent =
-    product ? "Modifier le produit" : "Ajouter un produit";
-
-  document.querySelector("#cioProductId").value = product?.id || "";
-  document.querySelector("#cioProductName").value = product?.nom || "";
-  document.querySelector("#cioProductCategory").value =
-    product?.categorie || "fleurs";
-  document.querySelector("#cioProductPrice").value = product?.prix ?? "";
-  document.querySelector("#cioProductImage").value = product?.image || "";
-  document.querySelector("#cioProductDescription").value =
-    product?.description || "";
-  document.querySelector("#cioProductAvailable").checked =
-    product ? Boolean(product.disponible) : true;
-}
-
-async function saveAdminProduct() {
-  const message = document.querySelector("#cioAdminMessage");
-
-  const product = {
-    id: document.querySelector("#cioProductId").value || undefined,
-    nom: document.querySelector("#cioProductName").value.trim(),
-    categorie: document.querySelector("#cioProductCategory").value,
-    prix: Number(document.querySelector("#cioProductPrice").value),
-    image: document.querySelector("#cioProductImage").value.trim(),
-    description: document
-      .querySelector("#cioProductDescription")
-      .value.trim(),
-    disponible: document.querySelector("#cioProductAvailable").checked
-  };
-
-  message.textContent = "Enregistrement…";
-
-  try {
-    const result = await adminPost({
-      action: product.id ? "update" : "add",
-      product
-    });
-
-    if (!result.ok) {
-      throw new Error(result.error || "Erreur");
-    }
-
-    document.querySelector("#cioAdminForm").classList.add("cio-hidden");
-    await refreshAdmin();
-    await loadProducts();
-    message.textContent = "Produit enregistré.";
-  } catch (error) {
-    message.textContent = error.message;
-  }
-}
-
-if (telegramUserId() === ADMIN_TELEGRAM_ID) {
-  installAdminInterface();
-}
-
-document.querySelector("#ageYes").addEventListener("click", () => {
-  document.querySelector("#ageGate").classList.add("hidden");
-});
-
-document.querySelector("#ageNo").addEventListener("click", () => {
-  document.querySelector(".gate-card").innerHTML =
-    "<h1>Accès refusé</h1><p>Cette boutique est réservée aux personnes majeures.</p>";
-});
-
-document.querySelector("#cartToggle").addEventListener("click", openCart);
-document.querySelector("#cartClose").addEventListener("click", closeCart);
-overlay.addEventListener("click", closeCart);
-
-document
-  .querySelector("#categoryFilter")
-  .addEventListener("change", event => renderProducts(event.target.value));
-
-document.querySelector("#contactBtn").addEventListener("click", () => {
-  tg?.openTelegramLink?.("https://t.me/Ciogeneve_bot") ||
-    alert("Contact Telegram : @Ciogeneve_bot");
-});
-
-loadProducts();
+if(String(tgUser().id||"")===ADMIN_TELEGRAM_ID)$("#adminToggle").classList.remove("hidden");
+updateDeliveryFields();showTelegramIdentity();loadProducts();renderCart();

@@ -1,22 +1,62 @@
-# CIO Annemasse Coffee — Mini-app Telegram
+# CIO Annemasse Coffee — version améliorée
 
-## Contenu
-- Accueil avec contrôle 18+
-- Catalogue avec photos
-- Catégories
-- Panier
-- Formulaire de commande
-- Envoi de la commande vers le bot avec Telegram WebApp `sendData`
+Cette version conserve le design néon actuel et ajoute :
 
-## À modifier avant publication
-Dans `app.js`, remplacez :
+- Livraison ou sur place
+- Adresse obligatoire seulement pour la livraison
+- Récupération automatique du nom, ID et @ Telegram
+- Numéro et suivi de commande
+- Bouton vers @cioswiss
+- Variantes / grammages / prix
+- Plusieurs photos et vidéos par produit
+- Administration : produits, commandes, clients, comptabilité
+- Statuts de commande
+- Enregistrement dans Google Sheets
 
-`VOTRE_COMPTE_TELEGRAM`
+## 1. GitHub
 
-par votre identifiant Telegram sans le symbole @.
+Remplacez les fichiers actuels du dépôt par :
+- `index.html`
+- `styles.css`
+- `app.js`
+- les images fournies
 
-## Publication
-Publiez les fichiers sur un hébergement HTTPS (par exemple GitHub Pages), puis ajoutez l’URL dans le bouton Menu de votre bot via BotFather.
+## 2. Apps Script
+
+Remplacez entièrement le contenu de `Code.gs` par le nouveau fichier.
+
+Dans **Paramètres du projet → Propriétés du script**, ajoutez :
+
+- `SHEET_ID` : ID du Google Sheet
+- `ADMIN_KEY` : votre code secret admin
+- `BOT_TOKEN` : token BotFather
+- `ADMIN_CHAT_ID` : 8878140883
+- `CONTACT_USERNAME` : cioswiss
+
+Puis : **Déployer → Gérer les déploiements → modifier → Nouvelle version → Déployer**.
+
+## 3. Google Sheets
+
+Les feuilles suivantes seront créées automatiquement :
+- Produits
+- Commandes
+- Clients
+- Dépenses
+
+La feuille Produits aura automatiquement les colonnes :
+`id, nom, categorie, prix, image, description, disponible, images, videos, variants`
+
+Exemple de `variants` :
+```json
+[{"label":"1 g","price":10,"stock":20},{"label":"3.5 g","price":30,"stock":10}]
+```
+
+Exemple de `images` :
+`photo1.jpeg|photo2.jpeg|https://exemple.com/photo3.jpg`
+
+Exemple de `videos` :
+`https://exemple.com/video1.mp4|https://exemple.com/video2.mp4`
 
 ## Important
-Cette version est une mini-app statique. Un véritable espace administrateur partagé entre plusieurs appareils et une base de commandes nécessitent un serveur ou un service de base de données.
+
+Le bouton Admin est affiché pour l’ID Telegram configuré dans `app.js`. Le code admin reste demandé avant les modifications. Pour une sécurité maximale, une prochaine étape devrait valider cryptographiquement `Telegram.WebApp.initData` côté serveur.
