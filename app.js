@@ -2,10 +2,10 @@ const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
 const products = [
-  {id:1,name:'Saha Terps — Collection',category:'resines',price:10,unit:'Sur place',image:'assets/saha_terps.jpeg',desc:'Collection visuelle à personnaliser avec les informations exactes du produit.'},
-  {id:2,name:'Sour Runtz',category:'fleurs',price:10,unit:'Sur place',image:'assets/sour_runtz.jpeg',desc:'Fiche produit à compléter avec le format, l’origine et les mentions nécessaires.'},
-  {id:3,name:'Frozen Mountain Giants',category:'collections',price:50,unit:'Collection',image:'assets/frozen_mountain.jpeg',desc:'Assortiment premium avec plusieurs références et visuels.'},
-  {id:4,name:'Cali Plates — Frozen Sift',category:'resines',price:50,unit:'Collection',image:'assets/cali_plates.jpeg',desc:'Collection Cali Plates à compléter avec les informations réelles.'}
+  {id:1,name:'Saha Terps — Collection',category:'resines',price:10,unit:'Sur place',image:'saha_terps.jpeg',desc:'Collection visuelle à personnaliser avec les informations exactes du produit.'},
+  {id:2,name:'Sour Runtz',category:'fleurs',price:10,unit:'Sur place',image:'sour_runtz.jpeg',desc:'Fiche produit à compléter avec le format, l’origine et les mentions nécessaires.'},
+  {id:3,name:'Frozen Mountain Giants',category:'collections',price:50,unit:'Collection',image:'frozen_mountain.jpeg',desc:'Assortiment premium avec plusieurs références et visuels.'},
+  {id:4,name:'Cali Plates — Frozen Sift',category:'resines',price:50,unit:'Collection',image:'cali_plates.jpeg',desc:'Collection Cali Plates à compléter avec les informations réelles.'}
 ];
 
 const cart = new Map();
