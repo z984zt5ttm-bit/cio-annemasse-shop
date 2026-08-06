@@ -1,10 +1,17 @@
-CIO Annemasse Coffee — design mobile v2
+CIO Annemasse Coffee — version application mobile
 
-Remplace uniquement ces 3 fichiers dans GitHub :
+Fichiers à remplacer sur GitHub :
 - index.html
 - styles.css
 - app.js
 
-Ne modifie pas Code.gs.
-Les produits, prix, variantes et images sont chargés depuis Google Sheets.
-Les images locales doivent garder exactement leur nom dans la colonne image (ex. saha_terps.jpeg).
+Ne pas modifier Code.gs.
+
+Cette version conserve :
+- chargement des produits depuis Google Sheets
+- panier et variantes
+- commandes Telegram
+- suivi des commandes
+- panneau administrateur
+
+Design : accueil mobile, catalogue en grille, fiche produit, panier, commande et navigation fixe en bas.
