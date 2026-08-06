@@ -214,32 +214,56 @@ function buildOrder() {
     total,
     items: lines
   };
-}
+}document.querySelector("#orderBtn").addEventListener("click", async () => {
 
-document.querySelector("#orderBtn").addEventListener("click", () => {
   const status = document.querySelector("#orderStatus");
 
   try {
-    const order = buildOrder();
-    const text =
-      `Nouvelle demande CIO Annemasse\n\n` +
-      `${order.items.join("\n")}\n\n` +
-      `Total indicatif: ${money(order.total)}\n` +
-      `Mode: ${order.mode}\n` +
-      `Client: ${order.name}\n` +
-      `Téléphone: ${order.phone}\n` +
-      `Adresse/lieu: ${order.address}\n` +
-      `Commentaire: ${order.note || "—"}`;
 
-    if (tg?.sendData) {
-      tg.sendData(JSON.stringify({ ...order, text }));
-      status.textContent = "Demande transmise au bot Telegram.";
-    } else {
-      status.textContent =
-        "Mode démo : ouvrez cette page depuis votre bot Telegram.";
+    const order = buildOrder();
+
+    status.textContent = "Envoi de la commande…";
+
+    const response = await fetch(API_URL, {
+
+      method: "POST",
+
+      redirect: "follow",
+
+      headers: {
+
+        "Content-Type": "text/plain;charset=utf-8"
+
+      },
+
+      body: JSON.stringify({
+
+        action: "order",
+
+        order: order
+
+      })
+
+    });
+
+    const result = await response.json();
+
+    if (!result.ok) {
+
+      throw new Error(result.error || "Impossible d’envoyer la commande.");
+
     }
+
+    status.textContent = "✅ Commande envoyée sur Telegram.";
+
+    cart.clear();
+
+    renderCart();
+
+    tg?.HapticFeedback?.notificationOccurred("success");
+
   } catch (error) {
-    status.textContent = error.message;
+status.textContent = "❌ " + error.message;
   }
 });
 
