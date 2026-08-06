@@ -21,8 +21,11 @@ const money = value =>
   }).format(Number(value || 0));
 
 function imagePath(name) {
+
   if (!name) return "logo.jpeg";
+
   if (/^https?:\/\//i.test(name)) return name;
+
   return name.replace(/^assets\//, "");
 }
 
