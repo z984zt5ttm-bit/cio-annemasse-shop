@@ -1,5 +1,4 @@
 const API_URL = "https://script.google.com/macros/s/AKfycbwdPwpXZKo-rDdhrleOZNs-4VyQ5cdTYmzYiq-o9MbTDQeR2WTB-h8MXuEhup4R2V7s/exec";
-const ADMIN_TELEGRAM_ID = "8878140883";
 const CONTACT_USERNAME = "cioswiss";
 
 const tg = window.Telegram?.WebApp;
@@ -8,39 +7,33 @@ if (tg) { tg.ready(); tg.expand(); }
 let products = [];
 let adminKey = "";
 const cart = new Map();
-
 const $ = selector => document.querySelector(selector);
-const money = value => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR"}).format(Number(value||0));
+const money = value => new Intl.NumberFormat("fr-FR", {style:"currency", currency:"EUR"}).format(Number(value || 0));
 const tgUser = () => tg?.initDataUnsafe?.user || {};
-const imagePath = value => !value ? "logo.jpeg" : /^https?:\/\//i.test(value) ? value : value.replace(/^assets\//,"");
-const splitList = value => Array.isArray(value) ? value : String(value||"").split(/[|,\n]/).map(x=>x.trim()).filter(Boolean);
-const parseVariants = value => {
-  if (Array.isArray(value)) return value;
-  try { return JSON.parse(value || "[]"); } catch { return []; }
-};
-
-function showTelegramIdentity(){
-  const user=tgUser();
-  $("#telegramIdentity").textContent = user.id
-    ? `Telegram : ${user.username ? "@"+user.username : user.first_name||"Utilisateur"} • ID ${user.id}`
-    : "Informations Telegram disponibles uniquement dans le bot.";
-  if(user.first_name && !$("#customerName").value) $("#customerName").value=[user.first_name,user.last_name].filter(Boolean).join(" ");
-}
+const esc = value => String(value ?? "").replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const imagePath = value => !value ? "logo.jpeg" : /^https?:\/\//i.test(value) ? value : value.replace(/^assets\//, "");
+const splitList = value => Array.isArray(value) ? value : String(value || "").split(/[|,\n]/).map(x => x.trim()).filter(Boolean);
+function parseVariants(value){ if(Array.isArray(value)) return value; try{return JSON.parse(value || "[]");}catch{return [];} }
 
 async function apiGet(action, extra={}){
-  const url=new URL(API_URL);
-  url.searchParams.set("action",action);
-  Object.entries(extra).forEach(([k,v])=>url.searchParams.set(k,v));
-  const r=await fetch(url,{redirect:"follow"});
-  const data=await r.json();
-  if(!data.ok) throw new Error(data.error||"Erreur serveur");
+  const url = new URL(API_URL); url.searchParams.set("action", action);
+  Object.entries(extra).forEach(([k,v]) => url.searchParams.set(k, v));
+  const r = await fetch(url, {redirect:"follow"});
+  const data = await r.json();
+  if(!data.ok) throw new Error(data.error || "Erreur serveur");
   return data;
 }
 async function apiPost(payload){
-  const r=await fetch(API_URL,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
-  const data=await r.json();
-  if(!data.ok) throw new Error(data.error||"Erreur serveur");
+  const r = await fetch(API_URL,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
+  const data = await r.json();
+  if(!data.ok) throw new Error(data.error || "Erreur serveur");
   return data;
+}
+
+function showTelegramIdentity(){
+  const user=tgUser();
+  $("#telegramIdentity").textContent = user.id ? `Telegram : ${user.username ? "@"+user.username : user.first_name || "Utilisateur"} • ID ${user.id}` : "Ouvrez la boutique depuis Telegram pour enregistrer votre suivi.";
+  if(user.first_name && !$("#customerName").value) $("#customerName").value=[user.first_name,user.last_name].filter(Boolean).join(" ");
 }
 
 async function loadProducts(){
@@ -48,13 +41,12 @@ async function loadProducts(){
   try{
     const data=await apiGet("products");
     products=(data.products||[]).map(p=>({
-      id:String(p.id), name:p.nom||"", category:p.categorie||"collections",
-      price:Number(p.prix||0), image:imagePath(p.image), desc:p.description||"",
-      available:p.disponible!==false, images:splitList(p.images||p.image),
-      videos:splitList(p.videos), variants:parseVariants(p.variants)
+      id:String(p.id),name:p.nom||"",category:p.categorie||"collections",price:Number(p.prix||0),
+      image:imagePath(p.image),desc:p.description||"",available:p.disponible!==false,
+      images:splitList(p.images||p.image).map(imagePath),videos:splitList(p.videos),variants:parseVariants(p.variants)
     })).filter(p=>p.available);
-    renderProducts();
-  }catch(e){$("#productGrid").innerHTML=`<p class="status">${e.message}</p>`;}
+    renderProducts(); renderCart();
+  }catch(e){$("#productGrid").innerHTML=`<p class="status">${esc(e.message)}</p>`;}
 }
 function renderProducts(){
   const filter=$("#categoryFilter").value, q=$("#searchInput").value.trim().toLowerCase();
@@ -63,11 +55,12 @@ function renderProducts(){
   if(!list.length){$("#productGrid").innerHTML='<p class="muted">Aucun produit trouvé.</p>';return;}
   list.forEach(p=>{
     const card=document.createElement("article"); card.className="product";
-    const minPrice=p.variants.length?Math.min(...p.variants.map(v=>Number(v.price||v.prix||0))):p.price;
-    card.innerHTML=`<div class="product-visual" data-detail="${p.id}"><img src="${p.images[0]||p.image}" alt="${p.name}"></div>
+    const prices=p.variants.map(v=>Number(v.price??v.prix??0)).filter(n=>n>0);
+    const minPrice=prices.length?Math.min(...prices):p.price;
+    card.innerHTML=`<button class="product-visual" data-detail="${esc(p.id)}"><img src="${esc(p.images[0]||p.image)}" alt="${esc(p.name)}"></button>
       <div class="product-body"><span class="badge">${p.variants.length?`${p.variants.length} formats`:"Disponible"}</span>
-      <h3>${p.name}</h3><p>${p.desc}</p><div class="product-meta"><span class="price">${money(minPrice)}</span><small>18+</small></div>
-      <button class="btn primary full" data-detail="${p.id}">Voir le produit</button></div>`;
+      <h3>${esc(p.name)}</h3><p>${esc(p.desc)}</p><div class="product-meta"><span class="price">${money(minPrice)}</span><small>18+</small></div>
+      <button class="btn primary full" data-detail="${esc(p.id)}">Voir le produit</button></div>`;
     $("#productGrid").appendChild(card);
   });
   document.querySelectorAll("[data-detail]").forEach(b=>b.addEventListener("click",()=>openProduct(b.dataset.detail)));
@@ -75,80 +68,64 @@ function renderProducts(){
 function openProduct(id){
   const p=products.find(x=>x.id===id); if(!p)return;
   const variants=p.variants.length?p.variants:[{label:"Standard",price:p.price,stock:null}];
-  $("#productDetails").innerHTML=`<img id="mainProductImage" class="gallery-main" src="${p.images[0]||p.image}" alt="${p.name}">
-    <div class="thumbs">${p.images.map(i=>`<button data-image="${imagePath(i)}"><img src="${imagePath(i)}" alt=""></button>`).join("")}</div>
-    <h2>${p.name}</h2><p class="muted">${p.desc}</p>
-    ${p.videos.map(v=>`<video class="media-video" controls playsinline src="${v}"></video>`).join("")}
-    <div class="variant-list">${variants.map((v,i)=>`<label class="variant-row"><span>${v.label||v.grammage||"Format"}</span><span><strong>${money(v.price||v.prix)}</strong> <input type="radio" name="variant" value="${i}" ${i===0?"checked":""}></span></label>`).join("")}</div>
+  const images=p.images.length?p.images:[p.image];
+  $("#productDetails").innerHTML=`<img id="mainProductImage" class="gallery-main" src="${esc(images[0])}" alt="${esc(p.name)}">
+    <div class="thumbs">${images.map(i=>`<button data-image="${esc(i)}"><img src="${esc(i)}" alt=""></button>`).join("")}</div>
+    <h2>${esc(p.name)}</h2><p class="muted">${esc(p.desc)}</p>
+    ${p.videos.map(v=>`<video class="media-video" controls playsinline src="${esc(v)}"></video>`).join("")}
+    <div class="variant-list">${variants.map((v,i)=>`<label class="variant-row"><span>${esc(v.label||v.grammage||"Format")}${v.stock!==undefined&&v.stock!==null?` <small>Stock ${esc(v.stock)}</small>`:""}</span><span><strong>${money(v.price??v.prix??p.price)}</strong> <input type="radio" name="variant" value="${i}" ${i===0?"checked":""}></span></label>`).join("")}</div>
     <button id="addVariant" class="btn primary full">Ajouter au panier</button>`;
   $("#productModal").classList.remove("hidden");
   document.querySelectorAll("[data-image]").forEach(b=>b.addEventListener("click",()=>$("#mainProductImage").src=b.dataset.image));
   $("#addVariant").addEventListener("click",()=>{
-    const i=Number(document.querySelector('input[name="variant"]:checked').value), v=variants[i];
+    const i=Number(document.querySelector('input[name="variant"]:checked').value),v=variants[i];
     const key=`${p.id}:${i}`;
-    cart.set(key,{productId:p.id,variantIndex:i,qty:(cart.get(key)?.qty||0)+1,label:v.label||v.grammage||"Standard",price:Number(v.price||v.prix||p.price)});
+    cart.set(key,{productId:p.id,variantIndex:i,qty:(cart.get(key)?.qty||0)+1,label:v.label||v.grammage||"Standard",price:Number(v.price??v.prix??p.price)});
     renderCart(); $("#productModal").classList.add("hidden"); openCart();
   });
 }
 function renderCart(){
-  $("#cartItems").innerHTML=""; let total=0,count=0;
+  $("#cartItems").innerHTML="";let total=0,count=0;
   if(!cart.size) $("#cartItems").innerHTML='<p class="muted">Votre panier est vide.</p>';
   for(const [key,item] of cart){
-    const p=products.find(x=>x.id===item.productId); if(!p)continue;
-    total+=item.price*item.qty; count+=item.qty;
-    const row=document.createElement("div"); row.className="cart-row";
-    row.innerHTML=`<div><strong>${p.name}</strong><small>${item.label} • ${money(item.price)} × ${item.qty}</small></div>
-      <div class="qty"><button data-key="${key}" data-change="-1">−</button><span>${item.qty}</span><button data-key="${key}" data-change="1">+</button></div>`;
+    const p=products.find(x=>x.id===item.productId);if(!p)continue;
+    total+=item.price*item.qty;count+=item.qty;
+    const row=document.createElement("div");row.className="cart-row";
+    row.innerHTML=`<div><strong>${esc(p.name)}</strong><small>${esc(item.label)} • ${money(item.price)} × ${item.qty}</small></div>
+      <div class="qty"><button data-key="${esc(key)}" data-change="-1">−</button><span>${item.qty}</span><button data-key="${esc(key)}" data-change="1">+</button></div>`;
     $("#cartItems").appendChild(row);
   }
-  $("#cartTotal").textContent=money(total); $("#cartCount").textContent=count;
-  document.querySelectorAll("[data-change]").forEach(b=>b.addEventListener("click",()=>{const x=cart.get(b.dataset.key);x.qty+=Number(b.dataset.change);if(x.qty<=0)cart.delete(b.dataset.key);renderCart();}));
+  $("#cartTotal").textContent=money(total);$("#cartCount").textContent=count;
+  document.querySelectorAll("[data-change]").forEach(b=>b.addEventListener("click",()=>{const x=cart.get(b.dataset.key);if(!x)return;x.qty+=Number(b.dataset.change);if(x.qty<=0)cart.delete(b.dataset.key);renderCart();}));
 }
 function openCart(){showTelegramIdentity();$("#cartDrawer").classList.add("open");$("#overlay").classList.add("show");}
 function closeCart(){$("#cartDrawer").classList.remove("open");$("#overlay").classList.remove("show");}
-function updateDeliveryFields(){
-  const pickup=$("#deliveryMode").value==="pickup";
-  $("#addressLabel").classList.toggle("hidden",pickup);
-  $("#pickupNotice").classList.toggle("hidden",!pickup);
-  $("#customerAddress").required=!pickup;
-}
+function updateDeliveryFields(){const pickup=$("#deliveryMode").value==="pickup";$("#addressLabel").classList.toggle("hidden",pickup);$("#pickupNotice").classList.toggle("hidden",!pickup);$("#customerAddress").required=!pickup;}
 function buildOrder(){
   if(!cart.size)throw new Error("Ajoutez au moins un produit.");
   const name=$("#customerName").value.trim(),phone=$("#customerPhone").value.trim(),mode=$("#deliveryMode").value;
   const address=mode==="pickup"?"Adresse envoyée en privé":$("#customerAddress").value.trim();
   if(!name||!phone||(mode==="delivery"&&!address))throw new Error("Complétez les informations obligatoires.");
-  let total=0; const items=[];
-  for(const item of cart.values()){
-    const p=products.find(x=>x.id===item.productId);if(!p)continue;
-    total+=item.price*item.qty;
-    items.push({productId:p.id,name:p.name,variant:item.label,unitPrice:item.price,qty:item.qty,lineTotal:item.price*item.qty});
-  }
+  const items=[];let total=0;
+  for(const item of cart.values()){const p=products.find(x=>x.id===item.productId);if(!p)continue;total+=item.price*item.qty;items.push({productId:p.id,name:p.name,variant:item.label,unitPrice:item.price,qty:item.qty,lineTotal:item.price*item.qty});}
   const u=tgUser();
-  return {name,phone,mode,address,note:$("#customerNote").value.trim(),total,items,
-    telegramId:String(u.id||""),telegramUsername:u.username||"",telegramFirstName:u.first_name||"",telegramLastName:u.last_name||""};
+  return {name,phone,mode,address,note:$("#customerNote").value.trim(),total,items,telegramId:String(u.id||""),telegramUsername:u.username||"",telegramFirstName:u.first_name||"",telegramLastName:u.last_name||"",telegramInitData:tg?.initData||""};
 }
 async function submitOrder(){
-  const status=$("#orderStatus"); status.textContent="Envoi de la commande…";
-  try{
-    const data=await apiPost({action:"createOrder",order:buildOrder()});
-    status.textContent=`✅ Commande ${data.orderNumber} enregistrée. Statut : ${data.status}.`;
-    $("#contactAfterOrder").classList.remove("hidden"); cart.clear();renderCart();
-    tg?.HapticFeedback?.notificationOccurred("success");
-  }catch(e){status.textContent=`❌ ${e.message}`;}
+  const status=$("#orderStatus");status.textContent="Envoi de la commande…";
+  try{const data=await apiPost({action:"createOrder",order:buildOrder()});status.textContent=`✅ Commande ${data.orderNumber} enregistrée. Statut : ${data.status}.`;$("#contactAfterOrder").classList.remove("hidden");cart.clear();renderCart();tg?.HapticFeedback?.notificationOccurred("success");}
+  catch(e){status.textContent=`❌ ${e.message}`;}
 }
 async function openOrders(){
-  $("#ordersPanel").classList.remove("hidden"); $("#ordersList").innerHTML='<p class="muted">Chargement…</p>';
-  try{
-    const id=String(tgUser().id||""); if(!id)throw new Error("Ouvrez la boutique depuis Telegram.");
-    const data=await apiGet("myOrders",{telegramId:id});
-    $("#ordersList").innerHTML=(data.orders||[]).map(o=>`<article class="order-card"><header><strong>${o.orderNumber}</strong><span class="status-pill">${o.status}</span></header><p>${o.createdAt}</p><p>${o.itemsSummary}</p><strong>${money(o.total)}</strong></article>`).join("")||'<p class="muted">Aucune commande.</p>';
-  }catch(e){$("#ordersList").innerHTML=`<p class="status">${e.message}</p>`;}
+  $("#ordersPanel").classList.remove("hidden");$("#ordersList").innerHTML='<p class="muted">Chargement…</p>';
+  try{const id=String(tgUser().id||"");if(!id)throw new Error("Ouvrez la boutique depuis Telegram.");const data=await apiGet("myOrders",{telegramId:id});$("#ordersList").innerHTML=(data.orders||[]).map(o=>`<article class="order-card"><header><strong>${esc(o.orderNumber)}</strong><span class="status-pill">${esc(o.status)}</span></header><p>${esc(o.createdAt)}</p><p>${esc(o.itemsSummary)}</p><strong>${money(o.total)}</strong></article>`).join("")||'<p class="muted">Aucune commande.</p>';}
+  catch(e){$("#ordersList").innerHTML=`<p class="status">${esc(e.message)}</p>`;}
 }
 
 async function openAdmin(){
-  if(!adminKey)adminKey=prompt("Code administrateur :")||"";
+  if(!adminKey) adminKey=prompt("Code administrateur :")||"";
   if(!adminKey)return;
-  $("#adminPanel").classList.remove("hidden"); await renderAdminTab("dashboard");
+  $("#adminPanel").classList.remove("hidden");await renderAdminTab("dashboard");
 }
 async function adminCall(action,payload={}){return apiPost({action,adminKey,...payload});}
 async function renderAdminTab(tab){
@@ -157,55 +134,52 @@ async function renderAdminTab(tab){
   try{
     if(tab==="dashboard"){
       const d=await adminCall("dashboard");
-      $("#adminContent").innerHTML=`<div class="stats-grid">
-        <div class="stat"><strong>${money(d.todayRevenue)}</strong><span>CA aujourd’hui</span></div>
-        <div class="stat"><strong>${money(d.monthRevenue)}</strong><span>CA du mois</span></div>
-        <div class="stat"><strong>${d.orderCount}</strong><span>Commandes</span></div>
-        <div class="stat"><strong>${d.clientCount}</strong><span>Clients</span></div></div>`;
+      $("#adminContent").innerHTML=`<div class="stats-grid"><div class="stat"><strong>${money(d.todayRevenue)}</strong><span>CA aujourd’hui</span></div><div class="stat"><strong>${money(d.monthRevenue)}</strong><span>CA du mois</span></div><div class="stat"><strong>${d.orderCount}</strong><span>Commandes</span></div><div class="stat"><strong>${d.clientCount}</strong><span>Clients</span></div></div>`;
     }else if(tab==="orders"){
       const d=await adminCall("listOrders");
-      $("#adminContent").innerHTML=`<table class="admin-table"><thead><tr><th>N°</th><th>Client</th><th>Total</th><th>Statut</th><th>Actions</th></tr></thead><tbody>${d.orders.map(o=>`<tr><td>${o.orderNumber}</td><td>${o.name}<br><small>${o.telegramUsername?"@"+o.telegramUsername:o.telegramId}</small></td><td>${money(o.total)}</td><td>${o.status}</td><td class="admin-actions">${["Acceptée","Préparation","En livraison","Prête sur place","Terminée","Annulée"].map(s=>`<button data-order="${o.orderNumber}" data-status="${s}">${s}</button>`).join("")}</td></tr>`).join("")}</tbody></table>`;
-      document.querySelectorAll("[data-order]").forEach(b=>b.addEventListener("click",async()=>{await adminCall("updateOrderStatus",{orderNumber:b.dataset.order,status:b.dataset.status});renderAdminTab("orders");}));
+      $("#adminContent").innerHTML=`<div class="table-wrap"><table class="admin-table"><thead><tr><th>N°</th><th>Client</th><th>Commande</th><th>Total</th><th>Statut</th><th>Actions</th></tr></thead><tbody>${d.orders.map(o=>`<tr><td>${esc(o.orderNumber)}</td><td>${esc(o.name)}<br><small>${o.telegramUsername?"@"+esc(o.telegramUsername):esc(o.telegramId)}</small><br><small>${esc(o.phone)}</small></td><td>${esc(o.itemsSummary)}</td><td>${money(o.total)}</td><td><span class="status-pill">${esc(o.status)}</span></td><td class="admin-actions">${["Acceptée","Préparation","En livraison","Prête sur place","Terminée","Annulée"].map(s=>`<button data-order="${esc(o.orderNumber)}" data-status="${esc(s)}">${esc(s)}</button>`).join("")}</td></tr>`).join("")}</tbody></table></div>`;
+      document.querySelectorAll("[data-order]").forEach(b=>b.addEventListener("click",async()=>{b.disabled=true;try{await adminCall("updateOrderStatus",{orderNumber:b.dataset.order,status:b.dataset.status});await renderAdminTab("orders");}catch(e){alert(e.message);b.disabled=false;}}));
     }else if(tab==="clients"){
       const d=await adminCall("listClients");
-      $("#adminContent").innerHTML=`<table class="admin-table"><thead><tr><th>Client</th><th>Téléphone</th><th>Commandes</th><th>Total</th></tr></thead><tbody>${d.clients.map(c=>`<tr><td>${c.name}<br><small>${c.telegramUsername?"@"+c.telegramUsername:c.telegramId}</small></td><td>${c.phone}</td><td>${c.orderCount}</td><td>${money(c.totalSpent)}</td></tr>`).join("")}</tbody></table>`;
+      $("#adminContent").innerHTML=`<div class="table-wrap"><table class="admin-table"><thead><tr><th>Client</th><th>Téléphone</th><th>Commandes</th><th>Total</th><th>Dernière commande</th></tr></thead><tbody>${d.clients.map(c=>`<tr><td>${esc(c.name)}<br><small>${c.telegramUsername?"@"+esc(c.telegramUsername):esc(c.telegramId)}</small></td><td>${esc(c.phone)}</td><td>${c.orderCount}</td><td>${money(c.totalSpent)}</td><td>${esc(c.lastOrderAt)}</td></tr>`).join("")}</tbody></table></div>`;
     }else if(tab==="accounting"){
       const d=await adminCall("accounting");
-      $("#adminContent").innerHTML=`<div class="stats-grid"><div class="stat"><strong>${money(d.revenue)}</strong><span>Ventes terminées</span></div><div class="stat"><strong>${money(d.expenses)}</strong><span>Dépenses</span></div><div class="stat"><strong>${money(d.profit)}</strong><span>Bénéfice estimé</span></div><div class="stat"><strong>${d.completedOrders}</strong><span>Commandes terminées</span></div></div>
-      <div class="admin-form"><h3>Ajouter une dépense</h3><div class="admin-row"><input id="expenseLabel" placeholder="Libellé"><input id="expenseAmount" type="number" placeholder="Montant"></div><button id="addExpense" class="btn primary">Enregistrer</button></div>`;
-      $("#addExpense").addEventListener("click",async()=>{await adminCall("addExpense",{label:$("#expenseLabel").value,amount:Number($("#expenseAmount").value)});renderAdminTab("accounting");});
+      $("#adminContent").innerHTML=`<div class="stats-grid"><div class="stat"><strong>${money(d.revenue)}</strong><span>Ventes terminées</span></div><div class="stat"><strong>${money(d.expenses)}</strong><span>Dépenses</span></div><div class="stat"><strong>${money(d.profit)}</strong><span>Bénéfice estimé</span></div><div class="stat"><strong>${d.completedOrders}</strong><span>Commandes terminées</span></div></div><div class="admin-form"><h3>Ajouter une dépense</h3><div class="admin-row"><input id="expenseLabel" placeholder="Libellé"><input id="expenseAmount" type="number" step="0.01" placeholder="Montant"></div><button id="addExpense" class="btn primary">Enregistrer</button></div>`;
+      $("#addExpense").addEventListener("click",async()=>{try{await adminCall("addExpense",{label:$("#expenseLabel").value,amount:Number($("#expenseAmount").value)});renderAdminTab("accounting");}catch(e){alert(e.message);}});
     }else if(tab==="products"){
       const d=await apiGet("products");
-      $("#adminContent").innerHTML=`<button id="newProduct" class="btn primary">Ajouter un produit</button><div id="productAdminList">${d.products.map(p=>`<article class="order-card"><strong>${p.nom}</strong><p>${p.categorie} • ${money(p.prix)}</p><button data-edit="${p.id}">Modifier</button></article>`).join("")}</div><div id="productAdminForm"></div>`;
+      $("#adminContent").innerHTML=`<div class="admin-toolbar"><button id="newProduct" class="btn primary">Ajouter un produit</button></div><div id="productAdminList" class="product-admin-list">${d.products.map(p=>`<article class="product-admin-card"><img src="${esc(imagePath(p.image))}" alt=""><div><strong>${esc(p.nom)}</strong><p>${esc(p.categorie)} • ${money(p.prix)} • ${p.disponible?"Disponible":"Indisponible"}</p></div><button data-edit="${esc(p.id)}" class="btn ghost">Modifier</button></article>`).join("")}</div><div id="productAdminForm"></div>`;
       $("#newProduct").addEventListener("click",()=>showProductAdminForm());
       document.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>showProductAdminForm(d.products.find(p=>String(p.id)===b.dataset.edit))));
     }
-  }catch(e){$("#adminContent").innerHTML=`<p class="status">${e.message}</p>`;}
+  }catch(e){$("#adminContent").innerHTML=`<p class="status">${esc(e.message)}</p><button id="resetAdminKey" class="btn ghost">Ressaisir le code</button>`;$("#resetAdminKey")?.addEventListener("click",()=>{adminKey="";openAdmin();});}
 }
 function showProductAdminForm(p={}){
   $("#productAdminForm").innerHTML=`<div class="admin-form"><h3>${p.id?"Modifier":"Ajouter"} le produit</h3>
-    <div class="admin-row"><input id="pName" placeholder="Nom" value="${p.nom||""}"><input id="pCategory" placeholder="Catégorie" value="${p.categorie||"collections"}"></div>
-    <div class="admin-row"><input id="pPrice" type="number" placeholder="Prix de base" value="${p.prix||""}"><input id="pImage" placeholder="Image principale" value="${p.image||""}"></div>
-    <textarea id="pDescription" placeholder="Description">${p.description||""}</textarea>
-    <textarea id="pImages" placeholder="Photos séparées par |">${p.images||p.image||""}</textarea>
-    <textarea id="pVideos" placeholder="Vidéos séparées par |">${p.videos||""}</textarea>
-    <textarea id="pVariants" placeholder='Variantes JSON : [{"label":"1 g","price":10,"stock":20}]'>${typeof p.variants==="string"?p.variants:JSON.stringify(p.variants||[])}</textarea>
-    <label><input id="pAvailable" type="checkbox" ${p.disponible!==false?"checked":""}> Disponible</label>
+    <div class="admin-row"><label>Nom<input id="pName" value="${esc(p.nom||"")}"></label><label>Catégorie<select id="pCategory"><option value="fleurs">Fleurs</option><option value="resines">Résines</option><option value="puffs">Puffs</option><option value="collections">Collections</option></select></label></div>
+    <div class="admin-row"><label>Prix de base<input id="pPrice" type="number" step="0.01" value="${esc(p.prix||"")}"></label><label>Image principale<input id="pImage" value="${esc(p.image||"")}" placeholder="URL ou nom du fichier"></label></div>
+    <label>Description<textarea id="pDescription">${esc(p.description||"")}</textarea></label>
+    <label>Photos supplémentaires<textarea id="pImages" placeholder="Une URL par ligne ou séparées par |">${esc(p.images||p.image||"")}</textarea></label>
+    <label>Vidéos<textarea id="pVideos" placeholder="Une URL vidéo par ligne ou séparées par |">${esc(p.videos||"")}</textarea></label>
+    <label>Variantes / formats<textarea id="pVariants" placeholder='[{"label":"1 g","price":10,"stock":20}]'>${esc(typeof p.variants==="string"?p.variants:JSON.stringify(p.variants||[]))}</textarea></label>
+    <label class="check"><input id="pAvailable" type="checkbox" ${p.disponible!==false?"checked":""}> Disponible</label>
     <div class="admin-actions"><button id="saveProduct" class="btn primary">Enregistrer</button>${p.id?'<button id="deleteProduct" class="btn danger">Supprimer</button>':""}</div></div>`;
-  $("#saveProduct").addEventListener("click",async()=>{await adminCall(p.id?"updateProduct":"addProduct",{product:{id:p.id,nom:$("#pName").value,categorie:$("#pCategory").value,prix:Number($("#pPrice").value),image:$("#pImage").value,description:$("#pDescription").value,images:$("#pImages").value,videos:$("#pVideos").value,variants:$("#pVariants").value,disponible:$("#pAvailable").checked}});renderAdminTab("products");});
-  if(p.id)$("#deleteProduct").addEventListener("click",async()=>{if(confirm("Supprimer ?")){await adminCall("deleteProduct",{id:p.id});renderAdminTab("products");}});
+  $("#pCategory").value=p.categorie||"collections";
+  $("#saveProduct").addEventListener("click",async()=>{try{JSON.parse($("#pVariants").value||"[]");await adminCall(p.id?"updateProduct":"addProduct",{product:{id:p.id,nom:$("#pName").value.trim(),categorie:$("#pCategory").value,prix:Number($("#pPrice").value),image:$("#pImage").value.trim(),description:$("#pDescription").value.trim(),images:$("#pImages").value.trim(),videos:$("#pVideos").value.trim(),variants:$("#pVariants").value.trim()||"[]",disponible:$("#pAvailable").checked}});renderAdminTab("products");loadProducts();}catch(e){alert(e.message);}});
+  if(p.id)$("#deleteProduct").addEventListener("click",async()=>{if(confirm("Supprimer ce produit ?")){try{await adminCall("deleteProduct",{id:p.id});renderAdminTab("products");loadProducts();}catch(e){alert(e.message);}}});
+  $("#productAdminForm").scrollIntoView({behavior:"smooth"});
 }
 
 $("#ageYes").addEventListener("click",()=>$("#ageGate").classList.add("hidden"));
-$("#ageNo").addEventListener("click",()=>$(".gate-card").innerHTML="<h1>Accès refusé</h1>");
+$("#ageNo").addEventListener("click",()=>$(".gate-card").innerHTML="<h1>Accès refusé</h1><p>Cette boutique est réservée aux personnes majeures.</p>");
 $("#cartToggle").addEventListener("click",openCart);$("#cartClose").addEventListener("click",closeCart);$("#overlay").addEventListener("click",closeCart);
 $("#deliveryMode").addEventListener("change",updateDeliveryFields);$("#orderBtn").addEventListener("click",submitOrder);
 $("#categoryFilter").addEventListener("change",renderProducts);$("#searchInput").addEventListener("input",renderProducts);
 $("#productClose").addEventListener("click",()=>$("#productModal").classList.add("hidden"));
 $("#ordersToggle").addEventListener("click",openOrders);$("#ordersClose").addEventListener("click",()=>$("#ordersPanel").classList.add("hidden"));
 $("#contactBtn").addEventListener("click",()=>tg?.openTelegramLink?.(`https://t.me/${CONTACT_USERNAME}`)||window.open(`https://t.me/${CONTACT_USERNAME}`,"_blank"));
+$("#contactAfterOrder").addEventListener("click",()=>tg?.openTelegramLink?.(`https://t.me/${CONTACT_USERNAME}`)||window.open(`https://t.me/${CONTACT_USERNAME}`,"_blank"));
 $("#adminToggle").addEventListener("click",openAdmin);$("#adminClose").addEventListener("click",()=>$("#adminPanel").classList.add("hidden"));
 document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>renderAdminTab(b.dataset.tab)));
 
-$("#adminToggle").classList.remove("hidden");
 updateDeliveryFields();showTelegramIdentity();loadProducts();renderCart();
