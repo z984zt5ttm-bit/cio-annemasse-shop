@@ -50,9 +50,28 @@ async function loadProducts(){
       image:imagePath(p.image),desc:p.description||"",available:p.disponible!==false,
       images:splitList(p.images||p.image).map(imagePath),videos:splitList(p.videos),variants:parseVariants(p.variants)
     })).filter(p=>p.available);
-    renderProducts(); renderCart();
+    renderProducts(); renderFeatured(); renderCart();
   }catch(e){$("#productGrid").innerHTML=`<p class="status">${esc(e.message)}</p>`;}
 }
+
+function renderFeatured(){
+  const box=$("#featuredGrid");
+  if(!box) return;
+  box.innerHTML="";
+  const list=products.slice(0,4);
+  if(!list.length){box.innerHTML='<p class="muted">Aucun produit disponible.</p>';return;}
+  list.forEach(p=>{
+    const prices=p.variants.map(v=>Number(v.price??v.prix??0)).filter(n=>n>0);
+    const minPrice=prices.length?Math.min(...prices):p.price;
+    const card=document.createElement("button");
+    card.className="featured-card";
+    card.dataset.detail=p.id;
+    card.innerHTML=`<img src="${esc(p.images[0]||p.image)}" alt="${esc(p.name)}"><span><strong>${esc(p.name)}</strong><small>${esc(p.category||"Collection")}</small><b>${money(minPrice)}</b></span>`;
+    box.appendChild(card);
+  });
+  box.querySelectorAll("[data-detail]").forEach(b=>b.addEventListener("click",()=>openProduct(b.dataset.detail)));
+}
+
 function renderProducts(){
   const filter=$("#categoryFilter").value, q=$("#searchInput").value.trim().toLowerCase();
   document.querySelectorAll(".category-pills button").forEach(b=>b.classList.toggle("active",b.dataset.category===filter));
@@ -98,7 +117,7 @@ function renderCart(){
     const p=products.find(x=>x.id===item.productId);if(!p)continue;
     total+=item.price*item.qty;count+=item.qty;
     const row=document.createElement("div");row.className="cart-row";
-    row.innerHTML=`<div><strong>${esc(p.name)}</strong><small>${esc(item.label)} • ${money(item.price)} × ${item.qty}</small></div>
+    row.innerHTML=`<img class="cart-thumb" src="${esc(p.images[0]||p.image)}" alt=""><div><strong>${esc(p.name)}</strong><small>${esc(item.label)} • ${money(item.price)} × ${item.qty}</small></div>
       <div class="qty"><button data-key="${esc(key)}" data-change="-1">−</button><span>${item.qty}</span><button data-key="${esc(key)}" data-change="1">+</button></div>`;
     $("#cartItems").appendChild(row);
   }
