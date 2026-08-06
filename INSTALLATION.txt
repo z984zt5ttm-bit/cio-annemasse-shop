@@ -1,0 +1,9 @@
+VERSION FINALE CIO ANNEMASSE COFFEE
+
+1. Remplacer uniquement index.html, styles.css et app.js dans GitHub.
+2. Ne pas modifier Code.gs.
+3. Valider le commit.
+4. Attendre la fin du déploiement GitHub Pages.
+5. Fermer puis rouvrir complètement la mini-app Telegram.
+
+Cette version utilise un numéro de cache élevé pour forcer le nouveau design à s'afficher.
