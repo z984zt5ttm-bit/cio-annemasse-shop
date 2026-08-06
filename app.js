@@ -23,11 +23,34 @@ async function apiGet(action, extra={}){
   if(!data.ok) throw new Error(data.error || "Erreur serveur");
   return data;
 }
-async function apiPost(payload){
-  const r = await fetch(API_URL,{method:"POST",redirect:"follow",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload)});
+async function apiPost(payload) {
+
+  const r = await fetch(API_URL, {
+
+    method: "POST",
+
+    redirect: "follow",
+
+    headers: {
+
+      "Content-Type": "text/plain;charset=utf-8"
+
+    },
+
+    body: JSON.stringify(payload)
+
+  });
+
   const data = await r.json();
-  if(!data.ok) throw new Error(data.error || "Erreur serveur");
+
+  if (!data.ok) {
+
+    throw new Error(data.error || "Erreur serveur");
+
+  }
+
   return data;
+
 }
 
 function showTelegramIdentity(){
