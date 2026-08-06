@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#050308">
+  <meta name="theme-color" content="#090611">
   <title>CIO Annemasse Coffee</title>
-  <link rel="stylesheet" href="styles.css?v=30">
+  <link rel="stylesheet" href="styles.css?v=100">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -22,149 +22,100 @@
     </div>
   </div>
 
-  <header class="topbar">
-    <button class="menu-btn" aria-label="Menu">☰</button>
-    <a class="brand" href="#home">
-      <img src="logo.jpeg" alt="CIO Annemasse Coffee">
-      <div><strong>CIO Annemasse</strong><span>Coffee</span></div>
-    </a>
-    <button id="cartToggle" class="cart-icon-btn" aria-label="Panier">🛒<span id="cartCount">0</span></button>
+  <header class="app-header">
+    <button class="round-btn" id="menuButton" aria-label="Menu">☰</button>
+    <div class="app-brand">
+      <img src="logo.jpeg" alt="CIO">
+      <div><strong>CIO Annemasse</strong><span>Coffee Shop • 18+</span></div>
+    </div>
+    <button id="cartToggle" class="round-btn cart-round" aria-label="Panier">🛒<span id="cartCount">0</span></button>
   </header>
 
-  <main>
-    <section id="home" class="hero">
-      <div class="hero-image-wrap">
-        <img src="logo.jpeg" alt="CIO Annemasse Coffee" class="hero-image">
-        <div class="hero-overlay"></div>
-        <div class="hero-copy">
-          <p class="eyebrow">CIO ANNEMASSE COFFEE</p>
-          <h1>La qualité,<br><span>notre priorité</span></h1>
-          <p>Produits sélectionnés, contrôle rigoureux et service client via Telegram.</p>
-          <div class="hero-actions">
-            <a href="#catalogue" class="btn primary">Voir le catalogue</a>
-            <button id="contactBtn" class="btn ghost">Écrire à @cioswiss</button>
-          </div>
-        </div>
+  <main class="app-main">
+    <section id="home" class="mobile-hero">
+      <div class="hero-glow"></div>
+      <img class="hero-mark" src="logo.jpeg" alt="CIO Annemasse Coffee">
+      <p class="eyebrow">COFFEE SHOP • ANNEMASSE & GENÈVE</p>
+      <h1>La qualité,<br><span>notre priorité.</span></h1>
+      <p>Découvrez nos collections et commandez directement dans Telegram.</p>
+      <div class="service-grid">
+        <article><span>📍</span><strong>Retrait</strong><small>Adresse envoyée en privé</small></article>
+        <article><span>🚚</span><strong>Livraison</strong><small>Selon votre secteur</small></article>
       </div>
-
-      <div class="service-strip">
-        <div><span>✋</span><strong>Sur place</strong><b>Rapide</b></div>
-        <div><span>🚚</span><strong>Livraison</strong><b>Annemasse / Genève</b></div>
-      </div>
-
-      <section class="featured-showcase">
-        <div class="section-title-row"><div><p class="eyebrow">SÉLECTION</p><h2>Produits populaires</h2></div><a href="#catalogue">Voir tout →</a></div>
-        <div id="featuredGrid" class="featured-grid"><p class="muted">Chargement…</p></div>
-      </section>
-
-      <section class="category-showcase">
-        <div class="section-title-row"><div><p class="eyebrow">CATÉGORIES</p><h2>Explorer</h2></div><a href="#catalogue">Tout voir →</a></div>
-        <div class="category-cards">
-          <button class="category-card" data-category="fleurs"><span>🌿</span><strong>Fleurs</strong></button>
-          <button class="category-card" data-category="resines"><span>🟫</span><strong>Résines</strong></button>
-          <button class="category-card" data-category="puffs"><span>💨</span><strong>Puffs</strong></button>
-          <button class="category-card" data-category="collections"><span>❄️</span><strong>Collections</strong></button>
-        </div>
-      </section>
+      <a class="btn primary hero-cta" href="#catalogue">Voir le catalogue</a>
     </section>
 
-    <section id="catalogue" class="section catalogue-section">
-      <div class="section-title-row catalogue-heading">
-        <div><p class="eyebrow">CATALOGUE</p><h2>Nos produits</h2></div>
-        <button id="ordersToggle" class="text-btn">Mes commandes</button>
-      </div>
+    <section class="quick-section">
+      <div class="section-title-row"><div><p class="eyebrow">SÉLECTION</p><h2>Produits populaires</h2></div><a href="#catalogue">Tout voir</a></div>
+      <div id="featuredProducts" class="featured-products"></div>
+    </section>
 
-      <div class="catalogue-tools">
-        <div class="search-wrap"><span>⌕</span><input id="searchInput" type="search" placeholder="Rechercher un produit..."></div>
-        <select id="categoryFilter" aria-label="Catégorie">
-          <option value="all">Toutes les catégories</option>
-          <option value="fleurs">Fleurs</option>
-          <option value="resines">Résines</option>
-          <option value="puffs">Puffs</option>
-          <option value="collections">Collections</option>
-        </select>
+    <section class="category-section">
+      <div class="section-title-row"><div><p class="eyebrow">EXPLORER</p><h2>Catégories</h2></div></div>
+      <div class="category-cards">
+        <button data-category="fleurs"><span>🌿</span><strong>Fleurs</strong><small>Premium</small></button>
+        <button data-category="resines"><span>🟫</span><strong>Résines</strong><small>Collections</small></button>
+        <button data-category="puffs"><span>💨</span><strong>Puffs</strong><small>Saveurs</small></button>
+        <button data-category="collections"><span>✨</span><strong>Collections</strong><small>Éditions</small></button>
       </div>
+    </section>
 
-      <div class="category-pills" aria-label="Filtres rapides">
-        <button class="active" data-category="all">Tout</button>
-        <button data-category="fleurs">Fleurs</button>
-        <button data-category="resines">Résines</button>
-        <button data-category="puffs">Puffs</button>
-        <button data-category="collections">Collections</button>
+    <section id="catalogue" class="catalogue-section">
+      <div class="section-title-row catalogue-heading"><div><p class="eyebrow">CATALOGUE</p><h2>Nos produits</h2></div></div>
+      <div class="search-shell"><span>⌕</span><input id="searchInput" type="search" placeholder="Rechercher un produit"></div>
+      <div class="filter-chips" id="filterChips">
+        <button data-filter="all" class="active">Tout</button>
+        <button data-filter="fleurs">Fleurs</button>
+        <button data-filter="resines">Résines</button>
+        <button data-filter="puffs">Puffs</button>
+        <button data-filter="collections">Collections</button>
       </div>
-
+      <select id="categoryFilter" class="hidden" aria-hidden="true">
+        <option value="all">Toutes les catégories</option><option value="fleurs">Fleurs</option><option value="resines">Résines</option><option value="puffs">Puffs</option><option value="collections">Collections</option>
+      </select>
       <div id="productGrid" class="product-grid"></div>
     </section>
   </main>
 
   <section id="productModal" class="modal hidden" aria-hidden="true">
-    <div class="modal-card product-modal-card">
-      <div class="modal-topline"><button id="productClose" class="back-btn">‹</button><strong>Détail du produit</strong><button class="mini-cart" onclick="document.querySelector('#cartToggle').click()">🛒</button></div>
+    <div class="product-sheet">
+      <div class="sheet-handle"></div>
+      <button id="productClose" class="icon-btn modal-close">×</button>
       <div id="productDetails"></div>
     </div>
   </section>
 
   <aside id="cartDrawer" class="drawer" aria-hidden="true">
-    <div class="drawer-head">
-      <button id="cartClose" class="back-btn">‹</button>
-      <div><p class="eyebrow">PANIER</p><h2>Votre panier</h2></div>
-      <span></span>
-    </div>
+    <div class="drawer-head"><div><p class="eyebrow">VOTRE SÉLECTION</p><h2>Panier</h2></div><button id="cartClose" class="icon-btn">×</button></div>
     <div id="cartItems" class="cart-items"></div>
-    <div class="cart-total"><span>Total</span><strong id="cartTotal">0,00 €</strong></div>
+    <div class="cart-summary"><div><span>Sous-total</span><strong id="cartTotal">0,00 €</strong></div><small>Les modalités de remise sont confirmées après la commande.</small></div>
     <div class="order-form">
-      <p class="form-kicker">VOS INFORMATIONS</p>
-      <p id="telegramIdentity" class="telegram-box muted"></p>
+      <p id="telegramIdentity" class="muted"></p>
       <label>Nom complet<input id="customerName" type="text" placeholder="Votre nom"></label>
       <label>Téléphone<input id="customerPhone" type="tel" placeholder="+33 / +41 ..."></label>
-      <p class="form-kicker">LIVRAISON</p>
-      <label>Mode de remise
-        <select id="deliveryMode">
-          <option value="pickup">Retrait sur place</option>
-          <option value="delivery">Livraison / remise</option>
-        </select>
-      </label>
+      <label>Mode de remise<select id="deliveryMode"><option value="pickup">Retrait sur place</option><option value="delivery">Livraison / remise</option></select></label>
       <p id="pickupNotice" class="notice">L’adresse de retrait sera envoyée en privé après validation.</p>
       <label id="addressLabel" class="hidden">Adresse ou lieu<textarea id="customerAddress" rows="3" placeholder="Adresse / lieu de rendez-vous"></textarea></label>
       <label>Commentaire<textarea id="customerNote" rows="2" placeholder="Optionnel"></textarea></label>
-      <div class="payment-box"><strong>💵 Paiement en espèces uniquement</strong><span>Paiement à la remise.</span></div>
-      <button id="orderBtn" class="btn primary full">Envoyer la commande 🚀</button>
+      <button id="orderBtn" class="btn primary full">Valider la commande</button>
       <p id="orderStatus" class="status"></p>
       <button id="contactAfterOrder" class="btn ghost full hidden">Contacter sur Telegram</button>
     </div>
   </aside>
 
-  <section id="ordersPanel" class="panel hidden">
-    <div class="panel-card">
-      <div class="panel-head"><button id="ordersClose" class="back-btn">‹</button><div><p class="eyebrow">SUIVI</p><h2>Mes commandes</h2></div><span></span></div>
-      <div id="ordersList" class="orders-list"></div>
-    </div>
-  </section>
+  <section id="ordersPanel" class="panel hidden"><div class="panel-card"><div class="panel-head"><div><p class="eyebrow">SUIVI</p><h2>Mes commandes</h2></div><button id="ordersClose" class="icon-btn">×</button></div><div id="ordersList" class="orders-list"></div></div></section>
 
-  <section id="adminPanel" class="admin-panel hidden">
-    <div class="admin-shell">
-      <div class="admin-head"><div><p class="eyebrow">ADMINISTRATION</p><h2>Tableau de bord</h2></div><button id="adminClose" class="icon-btn">×</button></div>
-      <nav class="admin-tabs">
-        <button data-tab="dashboard" class="active">Tableau de bord</button>
-        <button data-tab="orders">Commandes</button>
-        <button data-tab="clients">Clients</button>
-        <button data-tab="accounting">Comptabilité</button>
-        <button data-tab="products">Produits</button>
-      </nav>
-      <div id="adminContent" class="admin-content"></div>
-    </div>
-  </section>
+  <section id="adminPanel" class="admin-panel hidden"><div class="admin-shell"><div class="admin-head"><div><p class="eyebrow">ADMINISTRATION</p><h2>Tableau de bord</h2></div><button id="adminClose" class="icon-btn">×</button></div><nav class="admin-tabs"><button data-tab="dashboard" class="active">Tableau de bord</button><button data-tab="orders">Commandes</button><button data-tab="clients">Clients</button><button data-tab="accounting">Comptabilité</button><button data-tab="products">Produits</button></nav><div id="adminContent" class="admin-content"></div></div></section>
 
-  <nav class="bottom-nav">
-    <a href="#home"><span>⌂</span><small>Accueil</small></a>
-    <a href="#catalogue"><span>▦</span><small>Catalogue</small></a>
-    <button id="bottomCart"><span>🛒</span><small>Panier</small><b id="bottomCartCount">0</b></button>
-    <button id="bottomOrders"><span>▤</span><small>Commandes</small></button>
-    <button id="bottomContact"><span>◉</span><small>Contact</small></button>
+  <nav class="bottom-nav" aria-label="Navigation principale">
+    <button data-nav="home" class="active"><span>⌂</span><small>Accueil</small></button>
+    <button data-nav="catalogue"><span>⌕</span><small>Catalogue</small></button>
+    <button id="bottomCart"><span>🛒</span><small>Panier</small></button>
+    <button id="ordersToggle"><span>▣</span><small>Commandes</small></button>
+    <button id="adminToggle"><span>⚙</span><small>Admin</small></button>
   </nav>
 
-  <button id="adminToggle" class="floating-admin" title="Administration">⚙</button>
   <div id="overlay" class="overlay"></div>
-  <script src="app.js?v=30"></script>
+  <script src="app.js?v=100"></script>
 </body>
 </html>
