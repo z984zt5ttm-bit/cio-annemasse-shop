@@ -118,7 +118,7 @@ async function submitOrder(){
 }
 async function openOrders(){
   $("#ordersPanel").classList.remove("hidden");$("#ordersList").innerHTML='<p class="muted">Chargement…</p>';
-  try{const id=String(tgUser().id||"");if(!id)throw new Error("Ouvrez la boutique depuis Telegram.");const data=await apiGet("myOrders",{telegramId:id});$("#ordersList").innerHTML=(data.orders||[]).map(o=>`<article class="order-card"><header><strong>${esc(o.orderNumber)}</strong><span class="status-pill">${esc(o.status)}</span></header><p>${esc(o.createdAt)}</p><p>${esc(o.itemsSummary)}</p><strong>${money(o.total)}</strong></article>`).join("")||'<p class="muted">Aucune commande.</p>';}
+  try{const id=String(tgUser().id||"");if(!id)throw new Error("Ouvrez la boutique depuis Telegram.");const data=await apiGet("myOrders",{telegramId:id,initData:tg?.initData||""});$("#ordersList").innerHTML=(data.orders||[]).map(o=>`<article class="order-card"><header><strong>${esc(o.orderNumber)}</strong><span class="status-pill">${esc(o.status)}</span></header><p>${esc(o.createdAt)}</p><p>${esc(o.itemsSummary)}</p><strong>${money(o.total)}</strong></article>`).join("")||'<p class="muted">Aucune commande.</p>';}
   catch(e){$("#ordersList").innerHTML=`<p class="status">${esc(e.message)}</p>`;}
 }
 
@@ -177,8 +177,13 @@ $("#deliveryMode").addEventListener("change",updateDeliveryFields);$("#orderBtn"
 $("#categoryFilter").addEventListener("change",renderProducts);$("#searchInput").addEventListener("input",renderProducts);
 $("#productClose").addEventListener("click",()=>$("#productModal").classList.add("hidden"));
 $("#ordersToggle").addEventListener("click",openOrders);$("#ordersClose").addEventListener("click",()=>$("#ordersPanel").classList.add("hidden"));
-$("#contactBtn").addEventListener("click",()=>tg?.openTelegramLink?.(`https://t.me/${CONTACT_USERNAME}`)||window.open(`https://t.me/${CONTACT_USERNAME}`,"_blank"));
-$("#contactAfterOrder").addEventListener("click",()=>tg?.openTelegramLink?.(`https://t.me/${CONTACT_USERNAME}`)||window.open(`https://t.me/${CONTACT_USERNAME}`,"_blank"));
+function openContact(){
+  const url=`https://t.me/${CONTACT_USERNAME}`;
+  if(tg?.openTelegramLink) tg.openTelegramLink(url);
+  else window.open(url,"_blank","noopener,noreferrer");
+}
+$("#contactBtn").addEventListener("click",openContact);
+$("#contactAfterOrder").addEventListener("click",openContact);
 $("#adminToggle").addEventListener("click",openAdmin);$("#adminClose").addEventListener("click",()=>$("#adminPanel").classList.add("hidden"));
 document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>renderAdminTab(b.dataset.tab)));
 
