@@ -24,33 +24,15 @@ async function apiGet(action, extra={}){
   return data;
 }
 async function apiPost(payload) {
-
   const r = await fetch(API_URL, {
-
     method: "POST",
-
     redirect: "follow",
-
-    headers: {
-
-      "Content-Type": "text/plain;charset=utf-8"
-
-    },
-
+    headers: {"Content-Type": "text/plain;charset=utf-8"},
     body: JSON.stringify(payload)
-
   });
-
   const data = await r.json();
-
-  if (!data.ok) {
-
-    throw new Error(data.error || "Erreur serveur");
-
-  }
-
+  if (!data.ok) throw new Error(data.error || "Erreur serveur");
   return data;
-
 }
 
 function showTelegramIdentity(){
@@ -73,6 +55,7 @@ async function loadProducts(){
 }
 function renderProducts(){
   const filter=$("#categoryFilter").value, q=$("#searchInput").value.trim().toLowerCase();
+  document.querySelectorAll(".category-pills button").forEach(b=>b.classList.toggle("active",b.dataset.category===filter));
   const list=products.filter(p=>(filter==="all"||p.category===filter)&&(!q||`${p.name} ${p.desc}`.toLowerCase().includes(q)));
   $("#productGrid").innerHTML="";
   if(!list.length){$("#productGrid").innerHTML='<p class="muted">Aucun produit trouvé.</p>';return;}
@@ -82,7 +65,7 @@ function renderProducts(){
     const minPrice=prices.length?Math.min(...prices):p.price;
     card.innerHTML=`<button class="product-visual" data-detail="${esc(p.id)}"><img src="${esc(p.images[0]||p.image)}" alt="${esc(p.name)}"></button>
       <div class="product-body"><span class="badge">${p.variants.length?`${p.variants.length} formats`:"Disponible"}</span>
-      <h3>${esc(p.name)}</h3><p>${esc(p.desc)}</p><div class="product-meta"><span class="price">${money(minPrice)}</span><small>18+</small></div>
+      <h3>${esc(p.name)}</h3><p>${esc(p.desc)}</p><div class="product-meta"><span class="price">${money(minPrice)}</span><small>Dès</small></div>
       <button class="btn primary full" data-detail="${esc(p.id)}">Voir le produit</button></div>`;
     $("#productGrid").appendChild(card);
   });
@@ -96,7 +79,8 @@ function openProduct(id){
     <div class="thumbs">${images.map(i=>`<button data-image="${esc(i)}"><img src="${esc(i)}" alt=""></button>`).join("")}</div>
     <h2>${esc(p.name)}</h2><p class="muted">${esc(p.desc)}</p>
     ${p.videos.map(v=>`<video class="media-video" controls playsinline src="${esc(v)}"></video>`).join("")}
-    <div class="variant-list">${variants.map((v,i)=>`<label class="variant-row"><span>${esc(v.label||v.grammage||"Format")}${v.stock!==undefined&&v.stock!==null?` <small>Stock ${esc(v.stock)}</small>`:""}</span><span><strong>${money(v.price??v.prix??p.price)}</strong> <input type="radio" name="variant" value="${i}" ${i===0?"checked":""}></span></label>`).join("")}</div>
+    <p class="form-kicker">FORMAT</p>
+    <div class="variant-list">${variants.map((v,i)=>`<label class="variant-row"><span>${esc(v.label||v.grammage||"Format")}</span><strong>${money(v.price??v.prix??p.price)}</strong><input type="radio" name="variant" value="${i}" ${i===0?"checked":""}></label>`).join("")}</div>
     <button id="addVariant" class="btn primary full">Ajouter au panier</button>`;
   $("#productModal").classList.remove("hidden");
   document.querySelectorAll("[data-image]").forEach(b=>b.addEventListener("click",()=>$("#mainProductImage").src=b.dataset.image));
@@ -118,7 +102,7 @@ function renderCart(){
       <div class="qty"><button data-key="${esc(key)}" data-change="-1">−</button><span>${item.qty}</span><button data-key="${esc(key)}" data-change="1">+</button></div>`;
     $("#cartItems").appendChild(row);
   }
-  $("#cartTotal").textContent=money(total);$("#cartCount").textContent=count;
+  $("#cartTotal").textContent=money(total);$("#cartCount").textContent=count;$("#bottomCartCount").textContent=count;
   document.querySelectorAll("[data-change]").forEach(b=>b.addEventListener("click",()=>{const x=cart.get(b.dataset.key);if(!x)return;x.qty+=Number(b.dataset.change);if(x.qty<=0)cart.delete(b.dataset.key);renderCart();}));
 }
 function openCart(){showTelegramIdentity();$("#cartDrawer").classList.add("open");$("#overlay").classList.add("show");}
@@ -192,6 +176,16 @@ function showProductAdminForm(p={}){
   if(p.id)$("#deleteProduct").addEventListener("click",async()=>{if(confirm("Supprimer ce produit ?")){try{await adminCall("deleteProduct",{id:p.id});renderAdminTab("products");loadProducts();}catch(e){alert(e.message);}}});
   $("#productAdminForm").scrollIntoView({behavior:"smooth"});
 }
+function openContact(){
+  const url=`https://t.me/${CONTACT_USERNAME}`;
+  if(tg?.openTelegramLink) tg.openTelegramLink(url);
+  else window.open(url,"_blank","noopener,noreferrer");
+}
+function setCategory(category){
+  $("#categoryFilter").value=category;
+  renderProducts();
+  document.querySelector("#catalogue").scrollIntoView({behavior:"smooth"});
+}
 
 $("#ageYes").addEventListener("click",()=>$("#ageGate").classList.add("hidden"));
 $("#ageNo").addEventListener("click",()=>$(".gate-card").innerHTML="<h1>Accès refusé</h1><p>Cette boutique est réservée aux personnes majeures.</p>");
@@ -200,14 +194,13 @@ $("#deliveryMode").addEventListener("change",updateDeliveryFields);$("#orderBtn"
 $("#categoryFilter").addEventListener("change",renderProducts);$("#searchInput").addEventListener("input",renderProducts);
 $("#productClose").addEventListener("click",()=>$("#productModal").classList.add("hidden"));
 $("#ordersToggle").addEventListener("click",openOrders);$("#ordersClose").addEventListener("click",()=>$("#ordersPanel").classList.add("hidden"));
-function openContact(){
-  const url=`https://t.me/${CONTACT_USERNAME}`;
-  if(tg?.openTelegramLink) tg.openTelegramLink(url);
-  else window.open(url,"_blank","noopener,noreferrer");
-}
-$("#contactBtn").addEventListener("click",openContact);
-$("#contactAfterOrder").addEventListener("click",openContact);
+$("#contactBtn").addEventListener("click",openContact);$("#contactAfterOrder").addEventListener("click",openContact);
 $("#adminToggle").addEventListener("click",openAdmin);$("#adminClose").addEventListener("click",()=>$("#adminPanel").classList.add("hidden"));
+$("#bottomCart").addEventListener("click",openCart);$("#bottomOrders").addEventListener("click",openOrders);$("#bottomContact").addEventListener("click",openContact);
+document.querySelectorAll(".category-pills button,.category-card").forEach(b=>b.addEventListener("click",()=>setCategory(b.dataset.category)));
 document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>renderAdminTab(b.dataset.tab)));
 
-updateDeliveryFields();showTelegramIdentity();loadProducts();renderCart();
+updateDeliveryFields();
+showTelegramIdentity();
+loadProducts();
+renderCart();
