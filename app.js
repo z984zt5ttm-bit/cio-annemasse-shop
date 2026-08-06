@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbwdPwpXZKo-rDdhrleOZNs-4VyQ5cdTYmzYiq-o9MbTDQeR2WTB-h8MXuEhup4R2V7s/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyFvLCge6YJQ0nqEvhAR3p4zr6Czp93e9xVGyt5WuFypdLTB9VQ1kpBp8AcCXy5S-GL/exec";
 const CONTACT_USERNAME = "cioswiss";
 
 const tg = window.Telegram?.WebApp;
