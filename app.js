@@ -207,5 +207,5 @@ $("#contactBtn").addEventListener("click",()=>tg?.openTelegramLink?.(`https://t.
 $("#adminToggle").addEventListener("click",openAdmin);$("#adminClose").addEventListener("click",()=>$("#adminPanel").classList.add("hidden"));
 document.querySelectorAll(".admin-tabs button").forEach(b=>b.addEventListener("click",()=>renderAdminTab(b.dataset.tab)));
 
-if(String(tgUser().id||"")===ADMIN_TELEGRAM_ID)$("#adminToggle").classList.remove("hidden");
+$("#adminToggle").classList.remove("hidden");
 updateDeliveryFields();showTelegramIdentity();loadProducts();renderCart();
