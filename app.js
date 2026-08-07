@@ -33,7 +33,25 @@ function openProduct(id){const p=products.find(x=>x.id===id);if(!p)return;const 
 function renderCart(){$("#cartItems").innerHTML="";let total=0,count=0;if(!cart.size)$("#cartItems").innerHTML='<p class="muted">Votre panier est vide.</p>';for(const [key,item] of cart){const p=products.find(x=>x.id===item.productId);if(!p)continue;total+=item.price*item.qty;count+=item.qty;const row=document.createElement("div");row.className="cart-row";row.innerHTML=`<div><strong>${esc(p.name)}</strong><small>${esc(item.label)} • ${money(item.price)} × ${item.qty}</small></div><div class="qty"><button data-key="${esc(key)}" data-change="-1">−</button><span>${item.qty}</span><button data-key="${esc(key)}" data-change="1">+</button></div>`;$("#cartItems").appendChild(row);}$("#cartTotal").textContent=money(total);$("#cartCount").textContent=count;document.querySelectorAll("[data-change]").forEach(b=>b.addEventListener("click",()=>{const x=cart.get(b.dataset.key);if(!x)return;x.qty+=Number(b.dataset.change);if(x.qty<=0)cart.delete(b.dataset.key);renderCart();}));}
 function openCart(){showTelegramIdentity();$("#cartDrawer").classList.add("open");$("#overlay").classList.add("show");}function closeCart(){$("#cartDrawer").classList.remove("open");$("#overlay").classList.remove("show");}function updateDeliveryFields(){const pickup=$("#deliveryMode").value==="pickup";$("#addressLabel").classList.toggle("hidden",pickup);$("#pickupNotice").classList.toggle("hidden",!pickup);$("#customerAddress").required=!pickup;}
 function buildOrder(){if(!cart.size)throw new Error("Ajoutez au moins un produit.");const name=$("#customerName").value.trim(),phone=$("#customerPhone").value.trim(),mode=$("#deliveryMode").value,address=mode==="pickup"?"Adresse envoyée en privé":$("#customerAddress").value.trim();if(!name||!phone||(mode==="delivery"&&!address))throw new Error("Complétez les informations obligatoires.");const items=[];let total=0;for(const item of cart.values()){const p=products.find(x=>x.id===item.productId);if(!p)continue;total+=item.price*item.qty;items.push({productId:p.id,name:p.name,variant:item.label,unitPrice:item.price,qty:item.qty,lineTotal:item.price*item.qty});}const u=tgUser();return{name,phone,mode,address,note:$("#customerNote").value.trim(),total,items,telegramId:String(u.id||""),telegramUsername:u.username||"",telegramFirstName:u.first_name||"",telegramLastName:u.last_name||"",telegramInitData:tg?.initData||""};}
-async function submitOrder(){const status=$("#orderStatus");status.textContent="Envoi de la commande…";try{const data=await apiPost({action:"createOrder",order:buildOrder()});status.textContent=`✅ Commande ${data.orderNumber} enregistrée. Statut : ${data.status}.`;$("#contactAfterOrder").classList.remove("hidden");cart.clear();renderCart();tg?.HapticFeedback?.notificationOccurred("success");}catch(e){status.textContent=`❌ ${e.message}`;}}
+async function submitOrder(){
+  const status=$("#orderStatus");
+  status.textContent="Envoi de la commande…";
+
+  try{
+    const data=await apiPost({action:"createOrder",order:buildOrder()});
+    status.textContent=`✅ Commande ${data.orderNumber} enregistrée. Statut : ${data.status}.`;
+    $("#contactAfterOrder").classList.remove("hidden");
+    cart.clear();
+    renderCart();
+    tg?.HapticFeedback?.notificationOccurred("success");
+
+    if(data.loyalty){
+      setTimeout(()=>showLoyaltyModal(data.loyalty),450);
+    }
+  }catch(e){
+    status.textContent=`❌ ${e.message}`;
+  }
+}
 async function openOrders(){$("#ordersPanel").classList.remove("hidden");$("#ordersList").innerHTML='<p class="muted">Chargement…</p>';try{const id=String(tgUser().id||"");if(!id)throw new Error("Ouvrez la boutique depuis Telegram.");const data=await apiGet("myOrders",{telegramId:id,initData:tg?.initData||""});$("#ordersList").innerHTML=(data.orders||[]).map(o=>`<article class="order-card"><header><strong>${esc(o.orderNumber)}</strong><span class="status-pill">${esc(o.status)}</span></header><p>${esc(o.createdAt)}</p><p>${esc(o.itemsSummary)}</p><strong>${money(o.total)}</strong></article>`).join("")||'<p class="muted">Aucune commande.</p>';}catch(e){$("#ordersList").innerHTML=`<p class="status">${esc(e.message)}</p>`;}}
 
 async function openAdmin(){if(!adminKey)adminKey=prompt("Code administrateur :")||"";if(!adminKey)return;$("#adminPanel").classList.remove("hidden");await renderAdminTab("dashboard");}async function adminCall(action,payload={}){return apiPost({action,adminKey,...payload});}
@@ -253,6 +271,109 @@ function showProductAdminForm(p = {}) {
 
   $("#productAdminForm").scrollIntoView({ behavior: "smooth" });
 }
+
+let lastLoyalty=null;
+let wheelPrizes=[];
+let wheelSpinning=false;
+let wheelRotation=0;
+
+function updateTicketUi(loyalty){
+  const state=loyalty||{tickets:0,goal:2,spinsAvailable:0,unlocked:false};
+  lastLoyalty=state;
+  const tickets=Number(state.tickets||0);
+  const spins=Number(state.spinsAvailable||0);
+
+  document.querySelectorAll(".ticket-slot").forEach((slot,index)=>{
+    slot.classList.toggle("active",index<tickets||spins>0);
+  });
+
+  $("#ticketCounter").textContent=spins>0
+    ?"2 / 2 tickets — Roue débloquée"
+    :`${tickets} / 2 tickets`;
+
+  $("#ticketMessage").textContent=spins>0
+    ?"Bravo ! Vous avez réuni 2 tickets. Votre Roue Cadeau est prête."
+    :tickets===1
+      ?"Vous avez obtenu 1 ticket. Plus qu'une commande validée pour débloquer la Roue Cadeau."
+      :"Votre compteur repart à zéro. Deux commandes validées débloquent une nouvelle roue.";
+
+  $("#openWheelBtn").classList.toggle("hidden",spins<=0);
+}
+
+function showLoyaltyModal(loyalty){
+  updateTicketUi(loyalty);
+  $("#ticketView").classList.remove("hidden");
+  $("#wheelView").classList.add("hidden");
+  $("#loyaltyModal").classList.remove("hidden");
+}
+
+async function loadWheelPrizes(){
+  try{
+    const data=await apiGet("wheelPrizes");
+    wheelPrizes=data.prizes||[];
+    $("#wheelPrizeList").innerHTML=wheelPrizes.length
+      ?wheelPrizes.map(p=>`<span class="wheel-prize-chip">🎁 ${esc(p.name)}${p.variant?` — ${esc(p.variant)}`:""}</span>`).join("")
+      :'<span class="muted">Aucun produit à 50 € configuré.</span>';
+    return wheelPrizes;
+  }catch(e){
+    $("#wheelPrizeList").innerHTML=`<span class="status">${esc(e.message)}</span>`;
+    return [];
+  }
+}
+
+async function openGiftWheel(){
+  $("#ticketView").classList.add("hidden");
+  $("#wheelView").classList.remove("hidden");
+  $("#wheelResult").textContent="";
+  $("#spinWheelBtn").disabled=false;
+  await loadWheelPrizes();
+}
+
+async function spinGiftWheel(){
+  if(wheelSpinning)return;
+  if(!tg?.initData){
+    $("#wheelResult").textContent="❌ Ouvrez la mini-app depuis Telegram pour jouer.";
+    return;
+  }
+
+  wheelSpinning=true;
+  $("#spinWheelBtn").disabled=true;
+  $("#wheelResult").textContent="La roue tourne…";
+
+  try{
+    const result=await apiPost({action:"spinWheel",telegramInitData:tg.initData});
+    const extraTurns=6+Math.floor(Math.random()*3);
+    const target=result.won?9:90+Math.floor(Math.random()*250);
+    wheelRotation+=extraTurns*360+target;
+    $("#giftWheel").style.transform=`rotate(${wheelRotation}deg)`;
+
+    setTimeout(()=>{
+      if(result.won&&result.prize){
+        $("#wheelResult").textContent=`🎉 GAGNÉ ! ${result.prize.name} — ${result.prize.variant} (valeur 50 €).`;
+        tg?.HapticFeedback?.notificationOccurred("success");
+      }else{
+        $("#wheelResult").textContent="💜 Pas de gain cette fois. Votre compteur fidélité repart pour 2 nouvelles commandes.";
+        tg?.HapticFeedback?.notificationOccurred("warning");
+      }
+      lastLoyalty=result.loyalty;
+      wheelSpinning=false;
+    },6100);
+  }catch(e){
+    $("#wheelResult").textContent=`❌ ${e.message}`;
+    $("#spinWheelBtn").disabled=false;
+    wheelSpinning=false;
+  }
+}
+
+async function refreshLoyalty(){
+  const id=String(tgUser().id||"");
+  if(!id)return;
+  try{
+    const data=await apiGet("loyalty",{telegramId:id});
+    lastLoyalty=data.loyalty;
+  }catch(e){}
+}
+
 function openContact(){const url=`https://t.me/${CONTACT_USERNAME}`;if(tg?.openTelegramLink)tg.openTelegramLink(url);else window.open(url,"_blank","noopener,noreferrer");}
 function scrollToSection(id){document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});document.querySelectorAll(".bottom-nav [data-nav]").forEach(b=>b.classList.toggle("active",b.dataset.nav===id));}
 
@@ -265,5 +386,10 @@ document.querySelectorAll("[data-filter]").forEach(b=>b.addEventListener("click"
 document.querySelectorAll("[data-category]").forEach(b=>b.addEventListener("click",()=>{$("#categoryFilter").value=b.dataset.category;document.querySelectorAll("[data-filter]").forEach(x=>x.classList.toggle("active",x.dataset.filter===b.dataset.category));renderProducts();scrollToSection("catalogue");}));
 document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>scrollToSection(b.dataset.nav)));
 $("#menuButton").addEventListener("click",()=>scrollToSection("catalogue"));
+
+$("#loyaltyClose").addEventListener("click",()=>$("#loyaltyModal").classList.add("hidden"));
+$("#openWheelBtn").addEventListener("click",openGiftWheel);
+$("#spinWheelBtn").addEventListener("click",spinGiftWheel);
+refreshLoyalty();
 
 updateDeliveryFields();showTelegramIdentity();loadProducts();renderCart();

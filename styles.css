@@ -106,3 +106,20 @@
     flex-direction:column;
   }
 }
+
+
+/* ===== FIDÉLITÉ + ROUE CADEAU ===== */
+.loyalty-modal{position:fixed;inset:0;z-index:110;display:grid;place-items:center;padding:18px;background:rgba(4,2,8,.92);backdrop-filter:blur(16px);overflow:auto}
+.loyalty-card{position:relative;width:min(440px,100%);padding:24px 18px 20px;border:1px solid var(--line);border-radius:26px;background:linear-gradient(180deg,#160d21,#0b0710);box-shadow:0 22px 70px rgba(0,0,0,.45);text-align:center}
+.loyalty-close{position:absolute;right:12px;top:12px}.loyalty-card h2{margin:8px 0 10px;font-size:28px}
+.ticket-progress{display:grid;grid-template-columns:58px 1fr 58px;align-items:center;margin:24px auto 12px;max-width:300px}
+.ticket-slot{width:58px;height:58px;display:grid;place-items:center;border:2px solid rgba(255,255,255,.16);border-radius:50%;background:#171020;color:var(--muted);font-size:20px;font-weight:900}
+.ticket-slot.active{border-color:#b969ff;background:linear-gradient(135deg,#6f25d9,#ad48ff);color:white}
+.ticket-line{height:5px;background:rgba(255,255,255,.12)}.ticket-counter{display:block;margin:14px 0 18px;color:#ca83ff;font-size:18px}
+.wheel-stage{position:relative;width:min(320px,82vw);aspect-ratio:1;margin:20px auto}.wheel-pointer{position:absolute;z-index:4;left:50%;top:-16px;transform:translateX(-50%);color:#fff;font-size:34px;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+.gift-wheel{position:absolute;inset:0;border-radius:50%;border:7px solid #2a1738;background:conic-gradient(#8f3cff 0deg 18deg,#1b1227 18deg 36deg,#261431 36deg 54deg,#1b1227 54deg 72deg,#261431 72deg 90deg,#1b1227 90deg 108deg,#261431 108deg 126deg,#1b1227 126deg 144deg,#261431 144deg 162deg,#1b1227 162deg 180deg,#261431 180deg 198deg,#1b1227 198deg 216deg,#261431 216deg 234deg,#1b1227 234deg 252deg,#261431 252deg 270deg,#1b1227 270deg 288deg,#261431 288deg 306deg,#1b1227 306deg 324deg,#261431 324deg 342deg,#1b1227 342deg 360deg);box-shadow:0 0 0 5px rgba(143,60,255,.16),0 18px 55px rgba(0,0,0,.45);transition:transform 6s cubic-bezier(.12,.72,.08,1)}
+.gift-wheel::before{content:"GAIN 50€";position:absolute;left:50%;top:13px;transform:translateX(-50%);font-size:11px;font-weight:900;color:white}
+.wheel-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:76px;height:76px;display:grid;place-items:center;border-radius:50%;border:5px solid #352047;background:#090611;color:#c67cff;font-size:22px;font-weight:1000}
+.wheel-prize-list{display:flex;gap:7px;overflow:auto;margin:8px 0 16px;padding-bottom:4px}.wheel-prize-chip{white-space:nowrap;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:#151020;color:#cfc4da;font-size:11px}
+.wheel-result{min-height:46px;margin:14px 0 0;color:#d291ff;font-weight:800;line-height:1.45}
+

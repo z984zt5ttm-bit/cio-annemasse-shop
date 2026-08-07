@@ -1,0 +1,30 @@
+CIO ANNEMASSE — FIDÉLITÉ + ROUE CADEAU
+
+FONCTIONNEMENT
+- 1 commande envoyée avec succès = 1 ticket.
+- 1re commande : 1 / 2 tickets.
+- 2e commande : 2 / 2, la Roue Cadeau est débloquée.
+- Après le spin, il faut 2 nouvelles commandes pour débloquer une nouvelle roue.
+- Résultat calculé côté Google Apps Script : 5 % de chance de gain.
+- Le gain est choisi parmi les produits ou variantes configurés exactement à 50 €.
+
+INSTALLATION
+1. GitHub : remplacer index.html, app.js et styles.css.
+2. Google Apps Script : remplacer Code.gs par le Code.gs fourni.
+3. Enregistrer Code.gs.
+4. Déployer > Gérer les déploiements > Modifier > Nouvelle version > Déployer.
+5. GitHub : Commit changes et attendre GitHub Pages vert.
+6. Fermer complètement Telegram puis rouvrir la mini-app.
+
+GOOGLE SHEETS
+Le script crée automatiquement l'onglet "Fidelite".
+Ne le créez pas manuellement.
+
+PRODUITS DE LA ROUE
+- prix de base exactement 50 €
+OU
+- une variante avec "price": 50.
+
+NOTE
+Les promotions avec gain aléatoire peuvent être réglementées. Vérifiez les règles
+applicables à votre activité et affichez des conditions claires.
