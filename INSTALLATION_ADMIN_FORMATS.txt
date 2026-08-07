@@ -1,0 +1,31 @@
+CIO ANNEMASSE — VERSION ADMIN GRAMMAGES / PRIX / STOCK
+
+Cette version part de la mini-app mobile qui fonctionne déjà.
+
+À remplacer dans GitHub :
+1. index.html
+2. app.js
+3. styles.css
+
+NE PAS modifier Code.gs.
+
+NOUVEAU DANS ADMIN > PRODUITS > MODIFIER :
+- Grammage / format
+- Prix
+- Stock
+- Bouton + Ajouter un format
+- Bouton poubelle pour retirer un format
+
+Les formats sont toujours enregistrés dans la colonne "variants" de Google Sheets
+sous forme JSON, donc le système existant reste compatible.
+
+Exemple enregistré automatiquement :
+[{"label":"5g","price":20,"stock":10},{"label":"10g","price":35,"stock":8}]
+
+INSTALLATION :
+1. Ouvrir le dépôt GitHub.
+2. Remplacer index.html, app.js et styles.css par ceux de ce ZIP.
+3. Commit changes.
+4. Attendre le déploiement GitHub Pages vert.
+5. Fermer complètement Telegram puis rouvrir la mini-app.
+6. Ouvrir Admin > Produits > Modifier.

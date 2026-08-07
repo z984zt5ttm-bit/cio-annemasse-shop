@@ -38,7 +38,221 @@ async function openOrders(){$("#ordersPanel").classList.remove("hidden");$("#ord
 
 async function openAdmin(){if(!adminKey)adminKey=prompt("Code administrateur :")||"";if(!adminKey)return;$("#adminPanel").classList.remove("hidden");await renderAdminTab("dashboard");}async function adminCall(action,payload={}){return apiPost({action,adminKey,...payload});}
 async function renderAdminTab(tab){document.querySelectorAll(".admin-tabs button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));$("#adminContent").innerHTML='<p class="muted">Chargement…</p>';try{if(tab==="dashboard"){const d=await adminCall("dashboard");$("#adminContent").innerHTML=`<div class="stats-grid"><div class="stat"><strong>${money(d.todayRevenue)}</strong><span>CA aujourd’hui</span></div><div class="stat"><strong>${money(d.monthRevenue)}</strong><span>CA du mois</span></div><div class="stat"><strong>${d.orderCount}</strong><span>Commandes</span></div><div class="stat"><strong>${d.clientCount}</strong><span>Clients</span></div></div>`;}else if(tab==="orders"){const d=await adminCall("listOrders");$("#adminContent").innerHTML=`<div class="table-wrap"><table class="admin-table"><thead><tr><th>N°</th><th>Client</th><th>Commande</th><th>Total</th><th>Statut</th><th>Actions</th></tr></thead><tbody>${d.orders.map(o=>`<tr><td>${esc(o.orderNumber)}</td><td>${esc(o.name)}<br><small>${o.telegramUsername?"@"+esc(o.telegramUsername):esc(o.telegramId)}</small><br><small>${esc(o.phone)}</small></td><td>${esc(o.itemsSummary)}</td><td>${money(o.total)}</td><td><span class="status-pill">${esc(o.status)}</span></td><td class="admin-actions">${["Acceptée","Préparation","En livraison","Prête sur place","Terminée","Annulée"].map(s=>`<button data-order="${esc(o.orderNumber)}" data-status="${esc(s)}">${esc(s)}</button>`).join("")}</td></tr>`).join("")}</tbody></table></div>`;document.querySelectorAll("[data-order]").forEach(b=>b.addEventListener("click",async()=>{b.disabled=true;try{await adminCall("updateOrderStatus",{orderNumber:b.dataset.order,status:b.dataset.status});await renderAdminTab("orders");}catch(e){alert(e.message);b.disabled=false;}}));}else if(tab==="clients"){const d=await adminCall("listClients");$("#adminContent").innerHTML=`<div class="table-wrap"><table class="admin-table"><thead><tr><th>Client</th><th>Téléphone</th><th>Commandes</th><th>Total</th><th>Dernière commande</th></tr></thead><tbody>${d.clients.map(c=>`<tr><td>${esc(c.name)}<br><small>${c.telegramUsername?"@"+esc(c.telegramUsername):esc(c.telegramId)}</small></td><td>${esc(c.phone)}</td><td>${c.orderCount}</td><td>${money(c.totalSpent)}</td><td>${esc(c.lastOrderAt)}</td></tr>`).join("")}</tbody></table></div>`;}else if(tab==="accounting"){const d=await adminCall("accounting");$("#adminContent").innerHTML=`<div class="stats-grid"><div class="stat"><strong>${money(d.revenue)}</strong><span>Ventes terminées</span></div><div class="stat"><strong>${money(d.expenses)}</strong><span>Dépenses</span></div><div class="stat"><strong>${money(d.profit)}</strong><span>Bénéfice estimé</span></div><div class="stat"><strong>${d.completedOrders}</strong><span>Commandes terminées</span></div></div><div class="admin-form"><h3>Ajouter une dépense</h3><div class="admin-row"><input id="expenseLabel" placeholder="Libellé"><input id="expenseAmount" type="number" step="0.01" placeholder="Montant"></div><button id="addExpense" class="btn primary">Enregistrer</button></div>`;$("#addExpense").addEventListener("click",async()=>{try{await adminCall("addExpense",{label:$("#expenseLabel").value,amount:Number($("#expenseAmount").value)});renderAdminTab("accounting");}catch(e){alert(e.message);}});}else if(tab==="products"){const d=await apiGet("products");$("#adminContent").innerHTML=`<div class="admin-toolbar"><button id="newProduct" class="btn primary">Ajouter un produit</button></div><div id="productAdminList" class="product-admin-list">${d.products.map(p=>`<article class="product-admin-card"><img src="${esc(imagePath(p.image))}" alt=""><div><strong>${esc(p.nom)}</strong><p>${esc(p.categorie)} • ${money(p.prix)} • ${p.disponible?"Disponible":"Indisponible"}</p></div><button data-edit="${esc(p.id)}" class="btn ghost">Modifier</button></article>`).join("")}</div><div id="productAdminForm"></div>`;$("#newProduct").addEventListener("click",()=>showProductAdminForm());document.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>showProductAdminForm(d.products.find(p=>String(p.id)===b.dataset.edit))));}}catch(e){$("#adminContent").innerHTML=`<p class="status">${esc(e.message)}</p><button id="resetAdminKey" class="btn ghost">Ressaisir le code</button>`;$("#resetAdminKey")?.addEventListener("click",()=>{adminKey="";openAdmin();});}}
-function showProductAdminForm(p={}){$("#productAdminForm").innerHTML=`<div class="admin-form"><h3>${p.id?"Modifier":"Ajouter"} le produit</h3><div class="admin-row"><label>Nom<input id="pName" value="${esc(p.nom||"")}"></label><label>Catégorie<select id="pCategory"><option value="fleurs">Fleurs</option><option value="resines">Résines</option><option value="puffs">Puffs</option><option value="collections">Collections</option></select></label></div><div class="admin-row"><label>Prix de base<input id="pPrice" type="number" step="0.01" value="${esc(p.prix||"")}"></label><label>Image principale<input id="pImage" value="${esc(p.image||"")}" placeholder="URL ou nom du fichier"></label></div><label>Description<textarea id="pDescription">${esc(p.description||"")}</textarea></label><label>Photos supplémentaires<textarea id="pImages" placeholder="Une URL par ligne ou séparées par |">${esc(p.images||p.image||"")}</textarea></label><label>Vidéos<textarea id="pVideos" placeholder="Une URL vidéo par ligne ou séparées par |">${esc(p.videos||"")}</textarea></label><label>Variantes / formats<textarea id="pVariants" placeholder='[{"label":"1 g","price":10,"stock":20}]'>${esc(typeof p.variants==="string"?p.variants:JSON.stringify(p.variants||[]))}</textarea></label><label class="check"><input id="pAvailable" type="checkbox" ${p.disponible!==false?"checked":""}> Disponible</label><div class="admin-actions"><button id="saveProduct" class="btn primary">Enregistrer</button>${p.id?'<button id="deleteProduct" class="btn danger">Supprimer</button>':""}</div></div>`;$("#pCategory").value=p.categorie||"collections";$("#saveProduct").addEventListener("click",async()=>{try{JSON.parse($("#pVariants").value||"[]");await adminCall(p.id?"updateProduct":"addProduct",{product:{id:p.id,nom:$("#pName").value.trim(),categorie:$("#pCategory").value,prix:Number($("#pPrice").value),image:$("#pImage").value.trim(),description:$("#pDescription").value.trim(),images:$("#pImages").value.trim(),videos:$("#pVideos").value.trim(),variants:$("#pVariants").value.trim()||"[]",disponible:$("#pAvailable").checked}});renderAdminTab("products");loadProducts();}catch(e){alert(e.message);}});if(p.id)$("#deleteProduct").addEventListener("click",async()=>{if(confirm("Supprimer ce produit ?")){try{await adminCall("deleteProduct",{id:p.id});renderAdminTab("products");loadProducts();}catch(e){alert(e.message);}}});$("#productAdminForm").scrollIntoView({behavior:"smooth"});}
+function variantAdminRow(v = {}) {
+  return `
+    <div class="admin-variant-row">
+      <label>
+        Grammage / format
+        <input
+          class="variant-label"
+          type="text"
+          placeholder="Ex : 5g"
+          value="${esc(v.label || v.grammage || "")}"
+        >
+      </label>
+
+      <label>
+        Prix €
+        <input
+          class="variant-price"
+          type="number"
+          step="0.01"
+          min="0"
+          placeholder="20"
+          value="${esc(v.price ?? v.prix ?? "")}"
+        >
+      </label>
+
+      <label>
+        Stock
+        <input
+          class="variant-stock"
+          type="number"
+          step="1"
+          min="0"
+          placeholder="10"
+          value="${esc(v.stock ?? "")}"
+        >
+      </label>
+
+      <button type="button" class="variant-delete" title="Supprimer ce format">🗑</button>
+    </div>
+  `;
+}
+
+function addAdminVariantRow(v = {}) {
+  const container = $("#variantAdminRows");
+  if (!container) return;
+
+  container.insertAdjacentHTML("beforeend", variantAdminRow(v));
+  const row = container.lastElementChild;
+
+  row.querySelector(".variant-delete").addEventListener("click", () => {
+    row.remove();
+  });
+}
+
+function collectAdminVariants() {
+  return [...document.querySelectorAll(".admin-variant-row")]
+    .map(row => {
+      const label = row.querySelector(".variant-label").value.trim();
+      const priceValue = row.querySelector(".variant-price").value.trim();
+      const stockValue = row.querySelector(".variant-stock").value.trim();
+
+      return {
+        label,
+        price: priceValue === "" ? NaN : Number(priceValue),
+        stock: stockValue === "" ? null : Number(stockValue)
+      };
+    })
+    .filter(v => v.label && Number.isFinite(v.price) && v.price >= 0);
+}
+
+function showProductAdminForm(p = {}) {
+  const variants = parseVariants(p.variants);
+
+  $("#productAdminForm").innerHTML = `
+    <div class="admin-form">
+      <h3>${p.id ? "Modifier" : "Ajouter"} le produit</h3>
+
+      <div class="admin-row">
+        <label>
+          Nom
+          <input id="pName" value="${esc(p.nom || "")}">
+        </label>
+
+        <label>
+          Catégorie
+          <select id="pCategory">
+            <option value="fleurs">Fleurs</option>
+            <option value="resines">Résines</option>
+            <option value="puffs">Puffs</option>
+            <option value="collections">Collections</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="admin-row">
+        <label>
+          Prix de base
+          <input id="pPrice" type="number" step="0.01" min="0" value="${esc(p.prix || "")}">
+        </label>
+
+        <label>
+          Image principale
+          <input id="pImage" value="${esc(p.image || "")}" placeholder="Ex : saha_terps_usa.jpeg">
+        </label>
+      </div>
+
+      <label>
+        Description
+        <textarea id="pDescription">${esc(p.description || "")}</textarea>
+      </label>
+
+      <label>
+        Photos supplémentaires
+        <textarea id="pImages" placeholder="Une image par ligne ou séparées par |">${esc(p.images || p.image || "")}</textarea>
+      </label>
+
+      <label>
+        Vidéos
+        <textarea id="pVideos" placeholder="Une URL vidéo directe par ligne ou séparées par |">${esc(p.videos || "")}</textarea>
+      </label>
+
+      <section class="admin-variants-box">
+        <div class="admin-variants-head">
+          <div>
+            <strong>Grammages, prix & stock</strong>
+            <small>Ajoute autant de formats que nécessaire.</small>
+          </div>
+          <button id="addAdminVariant" type="button" class="btn ghost">+ Ajouter un format</button>
+        </div>
+
+        <div class="variant-column-labels" aria-hidden="true">
+          <span>Grammage</span>
+          <span>Prix</span>
+          <span>Stock</span>
+          <span></span>
+        </div>
+
+        <div id="variantAdminRows"></div>
+      </section>
+
+      <label class="check">
+        <input id="pAvailable" type="checkbox" ${p.disponible !== false ? "checked" : ""}>
+        Disponible
+      </label>
+
+      <div class="admin-actions">
+        <button id="saveProduct" class="btn primary">Enregistrer</button>
+        ${p.id ? '<button id="deleteProduct" class="btn danger">Supprimer</button>' : ""}
+      </div>
+    </div>
+  `;
+
+  $("#pCategory").value = p.categorie || "collections";
+
+  if (variants.length) {
+    variants.forEach(addAdminVariantRow);
+  } else {
+    addAdminVariantRow({
+      label: "",
+      price: p.prix || "",
+      stock: ""
+    });
+  }
+
+  $("#addAdminVariant").addEventListener("click", () => {
+    addAdminVariantRow();
+  });
+
+  $("#saveProduct").addEventListener("click", async () => {
+    try {
+      const variants = collectAdminVariants();
+
+      const manualBasePrice = Number($("#pPrice").value);
+      const basePrice = Number.isFinite(manualBasePrice) && manualBasePrice > 0
+        ? manualBasePrice
+        : Number(variants[0]?.price || 0);
+
+      await adminCall(p.id ? "updateProduct" : "addProduct", {
+        product: {
+          id: p.id,
+          nom: $("#pName").value.trim(),
+          categorie: $("#pCategory").value,
+          prix: basePrice,
+          image: $("#pImage").value.trim(),
+          description: $("#pDescription").value.trim(),
+          images: $("#pImages").value.trim(),
+          videos: $("#pVideos").value.trim(),
+          variants: JSON.stringify(variants),
+          disponible: $("#pAvailable").checked
+        }
+      });
+
+      await renderAdminTab("products");
+      await loadProducts();
+    } catch (e) {
+      alert(e.message);
+    }
+  });
+
+  if (p.id) {
+    $("#deleteProduct").addEventListener("click", async () => {
+      if (!confirm("Supprimer ce produit ?")) return;
+
+      try {
+        await adminCall("deleteProduct", { id: p.id });
+        await renderAdminTab("products");
+        await loadProducts();
+      } catch (e) {
+        alert(e.message);
+      }
+    });
+  }
+
+  $("#productAdminForm").scrollIntoView({ behavior: "smooth" });
+}
 function openContact(){const url=`https://t.me/${CONTACT_USERNAME}`;if(tg?.openTelegramLink)tg.openTelegramLink(url);else window.open(url,"_blank","noopener,noreferrer");}
 function scrollToSection(id){document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"});document.querySelectorAll(".bottom-nav [data-nav]").forEach(b=>b.classList.toggle("active",b.dataset.nav===id));}
 
