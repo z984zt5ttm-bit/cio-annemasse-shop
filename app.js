@@ -607,6 +607,13 @@ $("#menuButton").addEventListener("click",()=>scrollToSection("catalogue"));
 $("#loyaltyClose").addEventListener("click",()=>$("#loyaltyModal").classList.add("hidden"));
 $("#openWheelBtn").addEventListener("click",openGiftWheel);
 $("#spinWheelBtn").addEventListener("click",spinGiftWheel);
+$("#vipToggle").addEventListener("click", openVip);
+
+$("#vipClose").addEventListener("click", () => {
+
+  $("#vipPanel").classList.add("hidden");
+
+});
 refreshLoyalty();
 
 updateDeliveryFields();showTelegramIdentity();loadProducts();renderCart();
