@@ -106,10 +106,75 @@
   <section id="ordersPanel" class="panel hidden"><div class="panel-card"><div class="panel-head"><div><p class="eyebrow">SUIVI</p><h2>Mes commandes</h2></div><button id="ordersClose" class="icon-btn">×</button></div><div id="ordersList" class="orders-list"></div></div></section>
 
   <section id="adminPanel" class="admin-panel hidden"><div class="admin-shell"><div class="admin-head"><div><p class="eyebrow">ADMINISTRATION</p><h2>Tableau de bord</h2></div><button id="adminClose" class="icon-btn">×</button></div><nav class="admin-tabs"><button data-tab="dashboard" class="active">Tableau de bord</button><button data-tab="orders">Commandes</button><button data-tab="clients">Clients</button><button data-tab="accounting">Comptabilité</button><button data-tab="products">Produits</button></nav><div id="adminContent" class="admin-content"></div></div></section>
+<section id="vipPanel" class="panel hidden">
 
+  <div class="panel-card vip-card">
+
+    <div class="panel-head">
+
+      <div>
+
+        <p class="eyebrow">CLUB CIO</p>
+
+        <h2>👑 Mon statut VIP</h2>
+
+      </div>
+
+      <button id="vipClose" class="icon-btn">×</button>
+
+    </div>
+
+    <div id="vipContent">
+
+      <div class="vip-level">
+
+        <div class="vip-icon">🥉</div>
+
+        <p>Votre niveau</p>
+
+        <h3>Bronze</h3>
+
+      </div>
+
+      <div class="vip-progress-box">
+
+        <div class="vip-progress-head">
+
+          <span>Progression</span>
+
+          <strong>0 / 5</strong>
+
+        </div>
+
+        <div class="vip-progress">
+
+          <div class="vip-progress-bar" style="width:0%"></div>
+
+        </div>
+
+        <p class="muted">
+
+          Progressez pour atteindre le niveau Silver.
+
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
   <nav class="bottom-nav" aria-label="Navigation principale">
     <button data-nav="home" class="active"><span>⌂</span><small>Accueil</small></button>
     <button data-nav="catalogue"><span>⌕</span><small>Catalogue</small></button>
+    <button id="vipToggle">
+
+    <span>👑</span>
+
+    <small>VIP</small>
+
+</button>
     <button id="bottomCart"><span>🛒</span><small>Panier</small></button>
     <button id="ordersToggle"><span>▣</span><small>Commandes</small></button>
     <button id="adminToggle"><span>⚙</span><small>Admin</small></button>
