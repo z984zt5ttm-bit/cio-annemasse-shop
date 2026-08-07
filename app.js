@@ -271,6 +271,223 @@ function showProductAdminForm(p = {}) {
 
   $("#productAdminForm").scrollIntoView({ behavior: "smooth" });
 }
+function vipLevel(orderCount) {
+
+  if (orderCount >= 20) {
+
+    return {
+
+      name: "Black VIP",
+
+      icon: "💎",
+
+      min: 20,
+
+      next: null,
+
+      nextName: null
+
+    };
+
+  }
+
+  if (orderCount >= 10) {
+
+    return {
+
+      name: "Gold",
+
+      icon: "🥇",
+
+      min: 10,
+
+      next: 20,
+
+      nextName: "Black VIP"
+
+    };
+
+  }
+
+  if (orderCount >= 5) {
+
+    return {
+
+      name: "Silver",
+
+      icon: "🥈",
+
+      min: 5,
+
+      next: 10,
+
+      nextName: "Gold"
+
+    };
+
+  }
+
+  return {
+
+    name: "Bronze",
+
+    icon: "🥉",
+
+    min: 0,
+
+    next: 5,
+
+    nextName: "Silver"
+
+  };
+
+}
+
+async function openVip() {
+
+  const panel = $("#vipPanel");
+
+  const content = $("#vipContent");
+
+  panel.classList.remove("hidden");
+
+  content.innerHTML = '<p class="muted">Chargement du statut VIP…</p>';
+
+  try {
+
+    const id = String(tgUser().id || "");
+
+    if (!id) {
+
+      throw new Error("Ouvrez la mini-app depuis Telegram.");
+
+    }
+
+    const data = await apiGet("myOrders", {
+
+      telegramId: id,
+
+      initData: tg?.initData || ""
+
+    });
+
+    const orders = data.orders || [];
+
+    const completedOrders = orders.filter(order => {
+
+      const status = String(order.status || "")
+
+        .trim()
+
+        .toLowerCase();
+
+      return [
+
+        "terminée",
+
+        "terminee",
+
+        "terminé",
+
+        "termine",
+
+        "validée",
+
+        "validee"
+
+      ].includes(status);
+
+    });
+
+    const count = completedOrders.length;
+
+    const level = vipLevel(count);
+
+    let percentage = 100;
+
+    let progressText = "Niveau VIP maximum atteint.";
+
+    if (level.next) {
+
+      const range = level.next - level.min;
+
+      const current = count - level.min;
+
+      percentage = Math.max(
+
+        0,
+
+        Math.min(100, (current / range) * 100)
+
+      );
+
+      const remaining = level.next - count;
+
+      progressText =
+
+        `Encore ${remaining} commande${remaining > 1 ? "s" : ""} terminée${remaining > 1 ? "s" : ""} pour devenir ${level.nextName}.`;
+
+    }
+
+    content.innerHTML = `
+
+      <div class="vip-level">
+
+        <div class="vip-icon">${level.icon}</div>
+
+        <p>Votre niveau</p>
+
+        <h3>${esc(level.name)}</h3>
+
+      </div>
+
+      <div class="vip-stat">
+
+        <span>Commandes terminées</span>
+
+        <strong>${count}</strong>
+
+      </div>
+
+      <div class="vip-progress-box">
+
+        <div class="vip-progress-head">
+
+          <span>Progression</span>
+
+          <strong>
+
+            ${level.next ? `${count} / ${level.next}` : `${count}`}
+
+          </strong>
+
+        </div>
+
+        <div class="vip-progress">
+
+          <div
+
+            class="vip-progress-bar"
+
+            style="width:${percentage}%">
+
+          </div>
+
+        </div>
+
+        <p class="muted">${esc(progressText)}</p>
+
+      </div>
+
+    `;
+
+  } catch (e) {
+
+    content.innerHTML = `<p class="status">❌ ${esc(e.message)}</p>`;
+
+  }
+
+}
 
 let lastLoyalty=null;
 let wheelPrizes=[];
