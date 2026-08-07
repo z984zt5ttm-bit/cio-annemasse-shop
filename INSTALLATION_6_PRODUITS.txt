@@ -1,0 +1,16 @@
+CIO ANNEMASSE — 6 PRODUITS
+
+1. Envoie les 6 images .jpeg à la racine du dépôt GitHub, au même endroit que index.html.
+2. Dans Google Sheets > onglet Produits, copie les lignes du fichier Produits_Google_Sheets.csv.
+3. Colonnes attendues :
+id | nom | categorie | prix | image | description | disponible | images | videos | variants
+
+Prix préremplis d'après tes maquettes :
+- TEOS BARZ : 70€ / 130€
+- CALI PLATES US : 130€
+- FROZEN MOUNTAIN GIANTS : 70€
+- SAHA TERPS USA : 120€
+- SOUR RUNTZ CALI US : 120€ / 200€ / 350€
+- MOUNTAIN GIANTS ONE PIECE : prix laissé vide car non indiqué sur l'image.
+
+Après ajout des images et des lignes Google Sheets, recharge complètement la mini-app Telegram.

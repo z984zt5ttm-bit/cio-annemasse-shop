@@ -1,0 +1,7 @@
+﻿id,nom,categorie,prix,image,description,disponible,images,videos,variants
+1,TEOS BARZ — Strawberry Cough,puffs,70,teos_barz_strawberry_cough.jpeg,Strawberry Cough • Sativa • 1G disposable,oui,teos_barz_strawberry_cough.jpeg,,"[{""label"": ""1 puff 1G"", ""price"": 70}, {""label"": ""2 puffs 1G"", ""price"": 130}]"
+2,CALI PLATES US,collections,130,cali_plates_us.jpeg,Cali Plates US • collection premium,oui,cali_plates_us.jpeg,,"[{""label"": ""Standard"", ""price"": 130}]"
+3,FROZEN MOUNTAIN GIANTS,collections,70,frozen_mountain_giants.jpeg,Frozen Mountain Giants • collection multi-saveurs,oui,frozen_mountain_giants.jpeg,,"[{""label"": ""Standard"", ""price"": 70}]"
+4,SAHA TERPS USA,resines,120,saha_terps_usa.jpeg,Saha Terps USA • collection premium,oui,saha_terps_usa.jpeg,,"[{""label"": ""Standard"", ""price"": 120}]"
+5,SOUR RUNTZ CALI US,fleurs,120,sour_runtz_cali_us.jpeg,Sour Runtz Cali US • fleur premium,oui,sour_runtz_cali_us.jpeg,,"[{""label"": ""10g"", ""price"": 120}, {""label"": ""20g"", ""price"": 200}, {""label"": ""50g"", ""price"": 350}]"
+6,MOUNTAIN GIANTS — One Piece,puffs,,mountain_giants_one_piece.jpeg,Mountain Giants • édition limitée One Piece • 10 saveurs,oui,mountain_giants_one_piece.jpeg,,[]
